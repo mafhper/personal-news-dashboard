@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,4 +5,16 @@
 :root {
   --color-accent: 20 184 166; /* Default to teal-500 */
   --color-accent-dark: 13 148 136; /* teal-600 */
+  --color-background: 17 17 17; /* Equivalent to #111111 */
+}
+
+/* Hide scrollbar for Webkit browsers */
+main::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for Firefox and IE/Edge */
+main {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
 }

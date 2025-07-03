@@ -129,7 +129,7 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className={`text-gray-100 min-h-screen font-sans antialiased relative ${backgroundImage ? '' : 'bg-[#111111]'}`}
+      className={`text-gray-100 h-screen font-sans antialiased relative flex flex-col ${backgroundImage ? '' : 'bg-[rgb(var(--color-background))]'}`}
       style={backgroundImage ? { backgroundImage: `url(${backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
     >
       {backgroundImage && <div className="absolute inset-0 bg-black opacity-50 z-0"></div>}
@@ -143,7 +143,7 @@ const App: React.FC = () => {
         onPageChange={setCurrentPage}
         onOpenSettings={() => setIsSettingsModalOpen(true)} // New prop for opening settings
       />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 flex-grow overflow-y-auto pt-16">
         {isLoading && (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[rgb(var(--color-accent))] hover:border-[rgb(var(--color-accent-dark))] "></div>
