@@ -1,0 +1,23 @@
+{
+  "name": "personal-news-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A personal browser homepage that aggregates RSS feeds, displays the date, time, and weather. All data is stored locally.",
+  "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "live-server": "^1.2.2",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

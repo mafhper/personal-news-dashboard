@@ -1,0 +1,9 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-accent: 20 184 166; /* Default to teal-500 */
+  --color-accent-dark: 13 148 136; /* teal-600 */
+}
