@@ -4,6 +4,8 @@ import { getWeather, getCoordsForCity } from '../services/weatherService';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import type { WeatherData } from '../types';
 
+import { Clock } from './Clock';
+
 const WeatherIcon: React.FC<{ code: number; isDay: boolean }> = ({ code, isDay }) => {
     let icon;
     switch (code) {
@@ -22,7 +24,7 @@ const WeatherIcon: React.FC<{ code: number; isDay: boolean }> = ({ code, isDay }
     return <span className="text-2xl">{icon}</span>;
 };
 
-export const WeatherWidget: React.FC = () => {
+export const WeatherWidget: React.FC<{ timeFormat: '12h' | '24h' }> = ({ timeFormat }) => {
     const [weather, setWeather] = useState<WeatherData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [city, setCity] = useLocalStorage<string>('weather-city', 'Lisbon');
@@ -66,7 +68,7 @@ export const WeatherWidget: React.FC = () => {
                         type="text"
                         value={inputCity}
                         onChange={(e) => setInputCity(e.target.value)}
-                        className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))]"
+                        className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent)))]"
                         onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                         autoFocus
                     />
@@ -74,18 +76,22 @@ export const WeatherWidget: React.FC = () => {
                     <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-white">Cancel</button>
                 </div>
             ) : (
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col w-full">
                     {weather ? (
                         <>
-                            <div>
-                                <p className="font-bold text-lg">{city}</p>
-                                <p className="text-sm text-gray-400">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-                            </div>
-                            <div className="text-right">
-                                <div className="flex items-center space-x-2">
-                                    <span className="text-3xl font-bold">{Math.round(weather.temperature)}°C</span>
-                                    <WeatherIcon code={weather.weatherCode} isDay={weather.isDay} />
+                            <div className="flex justify-between items-center w-full">
+                                <div>
+                                    <p className="font-bold text-xl">{city}</p>
+                                    <p className="text-sm text-gray-400">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                                 </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-4xl font-bold">{Math.round(weather.temperature)}°C</span>
+                                    <WeatherIcon code={weather.weatherCode} isDay={weather.isDay} />
+                                    <Clock city={city} timeFormat={timeFormat} />
+                                </div>
+                            </div>
+                            <div className="w-full text-left mt-2">
+                                <button onClick={() => { setInputCity(city); setIsEditing(true); }} className="text-gray-400 hover:text-white text-xs">Change</button>
                             </div>
                         </>
                     ) : (
@@ -93,7 +99,6 @@ export const WeatherWidget: React.FC = () => {
                             {error ? error : `Loading weather for ${city}...`}
                         </div>
                     )}
-                     <button onClick={() => { setInputCity(city); setIsEditing(true); }} className="ml-4 text-gray-400 hover:text-white text-xs">Change</button>
                 </div>
             )}
         </div>

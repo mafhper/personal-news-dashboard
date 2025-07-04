@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clock } from './Clock';
+
 
 
 interface HeaderProps {
@@ -93,9 +93,7 @@ export const Header: React.FC<HeaderProps> = ({ onManageFeedsClick, onRefreshCli
                             className="hidden sm:inline-block bg-[rgb(var(--color-accent))] text-white px-4 py-1.5 text-sm font-bold rounded-sm hover:bg-[rgb(var(--color-accent-dark))] transition-colors">
                             MANAGE FEEDS
                         </button>
-                        <div className="hidden sm:block text-gray-400">
-                           <Clock />
-                        </div>
+                        
                         <button 
                             onClick={onOpenSettings}
                             className="p-1.5 bg-gray-700 text-white rounded-sm hover:bg-gray-600 transition-colors"

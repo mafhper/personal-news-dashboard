@@ -24,3 +24,17 @@ export interface WeatherData {
   weatherCode: number;
   isDay: boolean;
 }
+
+export type ThemeColor = 'blue' | 'green' | 'purple' | 'orange' | 'red';
+
+export interface AppSettings {
+  themeColor: ThemeColor;
+  backgroundImage: string | null;
+}
+
+export interface UserSettings {
+  themeColor: ThemeColor;
+  backgroundImage: string | null;
+  weatherCity: string;
+  timeFormat: '12h' | '24h';
+}

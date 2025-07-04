@@ -8,9 +8,11 @@ interface SettingsModalProps {
     onClose: () => void;
     setThemeColor: (color: string) => void;
     setBackgroundImage: (imageDataUrl: string | null) => void;
+    timeFormat: '12h' | '24h';
+    setTimeFormat: (format: '12h' | '24h') => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, setThemeColor, setBackgroundImage }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, setThemeColor, setBackgroundImage, timeFormat, setTimeFormat }) => {
     if (!isOpen) return null;
 
     return (
@@ -31,6 +33,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 <div>
                     <h3 className="text-lg font-semibold mb-2 text-gray-200">Background Image</h3>
                     <BackgroundSelector setBackgroundImage={setBackgroundImage} />
+                </div>
+
+                <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2 text-gray-200">Time Format</h3>
+                    <div className="flex space-x-4">
+                        <label className="inline-flex items-center">
+                            <input
+                                type="radio"
+                                className="form-radio text-[rgb(var(--color-accent))] focus:ring-[rgb(var(--color-accent))]"
+                                name="timeFormat"
+                                value="12h"
+                                checked={timeFormat === '12h'}
+                                onChange={() => setTimeFormat('12h')}
+                            />
+                            <span className="ml-2 text-gray-300">12h (AM/PM)</span>
+                        </label>
+                        <label className="inline-flex items-center">
+                            <input
+                                type="radio"
+                                className="form-radio text-[rgb(var(--color-accent))] focus:ring-[rgb(var(--color-accent))]"
+                                name="timeFormat"
+                                value="24h"
+                                checked={timeFormat === '24h'}
+                                onChange={() => setTimeFormat('24h')}
+                            />
+                            <span className="ml-2 text-gray-300">24h</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div className="mt-8 text-right">

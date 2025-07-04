@@ -3,16 +3,19 @@ import React from 'react';
 import type { Article, QuickLink } from '../types';
 import { FeaturedArticle } from './FeaturedArticle';
 import { ArticleList } from './ArticleList';
-import { WeatherWidget } from './WeatherWidget';
+
 import { QuickLinksWidget } from './QuickLinksWidget';
+
+import { WeatherWidget } from './WeatherWidget';
 
 interface FeedContentProps {
     articles: Article[];
     quickLinks: QuickLink[];
     setQuickLinks: (links: QuickLink[]) => void;
+    timeFormat: '12h' | '24h';
 }
 
-export const FeedContent: React.FC<FeedContentProps> = ({ articles, quickLinks, setQuickLinks }) => {
+export const FeedContent: React.FC<FeedContentProps> = ({ articles, quickLinks, setQuickLinks, timeFormat }) => {
     if (articles.length === 0) {
         return null;
     }
@@ -29,7 +32,7 @@ export const FeedContent: React.FC<FeedContentProps> = ({ articles, quickLinks, 
 
             {/* Sidebar */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
-                <WeatherWidget />
+                <WeatherWidget timeFormat={timeFormat} />
                 <QuickLinksWidget links={quickLinks} setLinks={setQuickLinks} />
                 <ArticleList articles={otherArticles} />
             </div>

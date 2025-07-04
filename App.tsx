@@ -9,6 +9,8 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { parseRssUrl } from './services/rssParser';
 import type { Article, FeedSource, QuickLink } from './types';
 
+
+
 const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const ARTICLES_PER_PAGE = 6;
 
@@ -33,6 +35,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [themeColor, setThemeColor] = useLocalStorage<string>('theme-color', '20 184 166'); // Default to teal-500 (RGB values)
   const [backgroundImage, setBackgroundImage] = useLocalStorage<string | null>('background-image', null);
+  const [timeFormat, setTimeFormat] = useLocalStorage<'12h' | '24h'>('time-format', '24h'); // Default to 24h format
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -150,7 +153,7 @@ const App: React.FC = () => {
           </div>
         )}
         {!isLoading && paginatedArticles.length > 0 && (
-            <FeedContent articles={paginatedArticles} quickLinks={quickLinks} setQuickLinks={setQuickLinks} />
+            <FeedContent articles={paginatedArticles} quickLinks={quickLinks} setQuickLinks={setQuickLinks} timeFormat={timeFormat} />
         )}
         {!isLoading && paginatedArticles.length === 0 && articles.length > 0 && (
           <p className="text-center text-gray-400">No articles found for the category "{selectedCategory}".</p>
@@ -179,9 +182,13 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsModalOpen(false)}
         setThemeColor={setThemeColor}
         setBackgroundImage={setBackgroundImage}
+        timeFormat={timeFormat}
+        setTimeFormat={setTimeFormat}
       />
     </div>
   );
 };
 
 export default App;
+
+

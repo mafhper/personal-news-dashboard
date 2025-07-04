@@ -18,14 +18,14 @@ export const FeaturedArticle: React.FC<{ article: Article }> = ({ article }) => 
                 </h2>
             </div>
             <div className="relative group flex-1">
-                 <a href={article.link} target="_blank" rel="noopener noreferrer" className="block">
+                 <a href={article.link} target="_blank" rel="noopener noreferrer" className="block relative h-full">
                     <img 
                         src={article.imageUrl || `https://picsum.photos/seed/${article.link}/800/600`} 
                         alt={article.title} 
-                        className="w-full h-auto object-cover aspect-[4/3] rounded-md"
+                        className="w-full h-full object-cover rounded-md"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent rounded-md"></div>
-                    <div className="absolute bottom-0 left-0 p-6 text-white">
+                    <div className="absolute inset-x-0 bottom-0 p-6 text-white">
                         <h3 className="text-3xl md:text-5xl font-extrabold leading-tight drop-shadow-lg group-hover:underline">
                             {article.title}
                         </h3>
