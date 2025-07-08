@@ -13,7 +13,7 @@ export const FeaturedArticle: React.FC<{ article: Article }> = ({ article }) => 
     return (
         <div className="flex h-full">
             <div className="hidden md:flex items-center justify-center mr-4">
-                <h2 className="text-7xl font-black uppercase text-gray-200" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', lineHeight: '0.8' }}>
+                <h2 className="text-7xl font-black uppercase text-gray-200 overflow-hidden text-ellipsis" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', lineHeight: '0.8' }}>
                     {article.sourceTitle.split(' ')[0]}
                 </h2>
             </div>

@@ -137,7 +137,7 @@ const App: React.FC = () => {
         onOpenSettings={() => setIsSettingsModalOpen(true)} // New prop for opening settings
         onMyFeedClick={handleRefresh} // Pass handleRefresh to MyFeed button
       />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 flex-grow overflow-y-hidden pt-16">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 flex-grow pt-16">
         {isLoading && (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[rgb(var(--color-accent))] hover:border-[rgb(var(--color-accent-dark))] "></div>

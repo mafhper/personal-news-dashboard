@@ -34,9 +34,9 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({ article, index }) => {
         <a href={article.link} target="_blank" rel="noopener noreferrer" className="flex items-start space-x-4 group border-b border-gray-800 pb-5">
             <span className="text-xl font-bold text-gray-600 group-hover:text-[rgb(var(--color-accent))] transition-colors">{index}</span>
             <div className="flex-1">
-                <h4 className="font-bold text-base leading-tight text-gray-100 group-hover:underline">{article.title}</h4>
+                <h4 className="font-bold text-base leading-tight text-gray-100 group-hover:underline overflow-hidden text-ellipsis">{article.title}</h4>
                 <div className="mt-2 flex items-center space-x-3 text-xs text-gray-400 font-medium">
-                    <span className="uppercase text-[rgb(var(--color-accent))] font-bold">{article.author || article.sourceTitle}</span>
+                    <span className="uppercase text-[rgb(var(--color-accent))] font-bold overflow-hidden text-ellipsis">{article.author || article.sourceTitle}</span>
                     <span className="text-gray-500">{timeSince(article.pubDate)}</span>
                     <span className="flex items-center gap-1 hover:text-white">
                         <ChatBubbleIcon />

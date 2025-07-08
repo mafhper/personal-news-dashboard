@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ onManageFeedsClick, onRefreshCli
     const navItems = ['All', 'Tech', 'Reviews', 'Science', 'Entertainment', 'AI'];
 
     return (
-        <header className="border-b border-gray-700 sticky top-0 bg-[rgb(var(--color-background))] z-10">
+        <header className="border-b border-gray-700 sticky top-0 bg-[rgb(var(--color-background))] z-20">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     <div className="flex items-center space-x-8">
@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ onManageFeedsClick, onRefreshCli
                         </nav>
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
                          <div className="flex items-center space-x-2">
                             <button 
                                 onClick={() => onPageChange(currentPage - 1)}
