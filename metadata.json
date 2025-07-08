@@ -1,0 +1,5 @@
+{
+  "name": "Personal News Dashboard",
+  "description": "A personal browser homepage that aggregates RSS feeds, displays the date, time, and weather. All data is stored locally.",
+  "requestFramePermissions": []
+}
