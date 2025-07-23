@@ -1,7 +1,591 @@
 :root {
+  /* Legacy support */
   --color-background: 26 32 44; /* Dark Gray */
+
+  /* Extended Theme System CSS Custom Properties */
+  --color-primary: 20 184 166;
+  --color-secondary: 45 55 72;
+  --color-accent: 20 184 166;
+  --color-background: 26 32 44;
+  --color-surface: 45 55 72;
+  --color-text: 247 250 252;
+  --color-textSecondary: 160 174 192;
+  --color-border: 75 85 99;
+  --color-success: 16 185 129;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+
+  /* Layout variables */
+  --layout-padding: 1rem;
+  --layout-gap: 1rem;
+
+  /* Density variables */
+  --density-font-size: 1rem;
+  --density-line-height: 1.5rem;
+
+  /* Border radius */
+  --border-radius: 0.5rem;
+
+  /* Feature toggles */
+  --shadows-enabled: 1;
+  --animations-enabled: 1;
+  --transition-duration: 0.2s;
 }
 
 body {
-    background-color: rgb(var(--color-background));
+  background-color: rgb(var(--color-background));
+}
+
+/* Skip Links for Accessibility */
+.skip-links {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  z-index: 9999;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+/* Focus indicators that meet WCAG standards */
+*:focus {
+  outline: 2px solid rgb(var(--color-accent, 59 130 246));
+  outline-offset: 2px;
+}
+
+/* High contrast focus indicators for better visibility */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+a:focus {
+  outline: 2px solid rgb(var(--color-accent, 59 130 246));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(var(--color-accent, 59 130 246), 0.2);
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Theme utility classes */
+.theme-surface {
+  background-color: rgb(var(--color-surface));
+}
+
+.theme-text {
+  color: rgb(var(--color-text));
+}
+
+.theme-text-secondary {
+  color: rgb(var(--color-textSecondary));
+}
+
+.theme-border {
+  border-color: rgb(var(--color-border));
+}
+
+.theme-primary {
+  background-color: rgb(var(--color-primary));
+}
+
+.theme-accent {
+  background-color: rgb(var(--color-accent));
+}
+
+/* Layout density classes */
+.layout-compact {
+  padding: calc(var(--layout-padding) * 0.5);
+  gap: calc(var(--layout-gap) * 0.5);
+}
+
+.layout-comfortable {
+  padding: var(--layout-padding);
+  gap: var(--layout-gap);
+}
+
+.layout-spacious {
+  padding: calc(var(--layout-padding) * 1.5);
+  gap: calc(var(--layout-gap) * 1.5);
+}
+
+/* Density classes */
+.density-low {
+  font-size: calc(var(--density-font-size) * 0.875);
+  line-height: calc(var(--density-line-height) * 0.875);
+}
+
+.density-medium {
+  font-size: var(--density-font-size);
+  line-height: var(--density-line-height);
+}
+
+.density-high {
+  font-size: calc(var(--density-font-size) * 1.125);
+  line-height: calc(var(--density-line-height) * 1.125);
+}
+
+/* Border radius classes */
+.theme-rounded {
+  border-radius: var(--border-radius);
+}
+
+/* Conditional shadows */
+.theme-shadow {
+  box-shadow: calc(var(--shadows-enabled) * 0.1rem)
+    calc(var(--shadows-enabled) * 0.1rem) calc(var(--shadows-enabled) * 0.6rem)
+    rgba(0, 0, 0, 0.1);
+}
+
+.theme-shadow-lg {
+  box-shadow: calc(var(--shadows-enabled) * 0.25rem)
+    calc(var(--shadows-enabled) * 0.25rem) calc(var(--shadows-enabled) * 1rem)
+    rgba(0, 0, 0, 0.15);
+}
+
+/* Conditional animations */
+.theme-transition {
+  transition-duration: var(--transition-duration);
+  transition-timing-function: ease-in-out;
+}
+
+.theme-transition-colors {
+  transition: background-color var(--transition-duration) ease-in-out,
+    color var(--transition-duration) ease-in-out,
+    border-color var(--transition-duration) ease-in-out;
+}
+
+/* Theme-aware hover states */
+.theme-hover:hover {
+  background-color: rgba(var(--color-accent), 0.1);
+}
+
+.theme-hover-surface:hover {
+  background-color: rgba(var(--color-text), 0.05);
+}
+
+/* Status colors */
+.theme-success {
+  color: rgb(var(--color-success));
+}
+
+.theme-warning {
+  color: rgb(var(--color-warning));
+}
+
+.theme-error {
+  color: rgb(var(--color-error));
+}
+
+.theme-success-bg {
+  background-color: rgb(var(--color-success));
+}
+
+.theme-warning-bg {
+  background-color: rgb(var(--color-warning));
+}
+
+.theme-error-bg {
+  background-color: rgb(var(--color-error));
+}
+/* Theme transition animations */
+.theme-transition-all {
+  transition: background-color var(--transition-duration) ease-in-out,
+    color var(--transition-duration) ease-in-out,
+    border-color var(--transition-duration) ease-in-out,
+    box-shadow var(--transition-duration) ease-in-out;
+}
+
+/* Smooth theme change animations */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --theme-transition-duration: 0.3s;
+  }
+
+  body,
+  .theme-transition-all,
+  .theme-surface,
+  .theme-primary,
+  .theme-accent {
+    transition: background-color var(--theme-transition-duration) ease-in-out,
+      color var(--theme-transition-duration) ease-in-out,
+      border-color var(--theme-transition-duration) ease-in-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --theme-transition-duration: 0s;
+  }
+}
+
+/* System theme preference detection classes */
+@media (prefers-color-scheme: dark) {
+  .auto-theme-dark {
+    display: block;
+  }
+  .auto-theme-light {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .auto-theme-dark {
+    display: none;
+  }
+  .auto-theme-light {
+    display: block;
+  }
+}
+
+/* Theme change animation keyframes */
+@keyframes theme-fade-in {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.theme-change-animation {
+  animation: theme-fade-in var(--theme-transition-duration) ease-in-out;
+}
+
+/* Basic responsive styles */
+@media (max-width: 768px) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 32px;
+  }
+}
+
+/* Mobile-first responsive breakpoints */
+@media (max-width: 480px) {
+  /* Extra small screens */
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .text-responsive {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .title-responsive {
+    font-size: 18px;
+    line-height: 1.3;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  /* Small tablets */
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .text-responsive {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .title-responsive {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+}
+
+@media (min-width: 769px) {
+  /* Desktop and larger tablets */
+  .text-responsive {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .title-responsive {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1024px) {
+  /* Large screens - optimize content-to-whitespace ratio */
+  :root {
+    --layout-padding: 1.5rem;
+    --layout-gap: 1.5rem;
+  }
+
+  .container {
+    max-width: 1400px;
+  }
+
+  /* Better typography scaling for readability */
+  .text-responsive {
+    font-size: 17px;
+    line-height: 1.65;
+  }
+
+  .title-responsive {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Extra large screens */
+  :root {
+    --layout-padding: 2rem;
+    --layout-gap: 2rem;
+  }
+
+  .container {
+    max-width: 1600px;
+  }
+
+  .text-responsive {
+    font-size: 18px;
+    line-height: 1.7;
+  }
+
+  .title-responsive {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+}
+
+@media (min-width: 1536px) {
+  /* Ultra-wide screens */
+  :root {
+    --layout-padding: 2.5rem;
+    --layout-gap: 2.5rem;
+  }
+
+  .container {
+    max-width: 1800px;
+  }
+
+  .text-responsive {
+    font-size: 19px;
+    line-height: 1.75;
+  }
+
+  .title-responsive {
+    font-size: 36px;
+    line-height: 1.05;
+  }
+}
+
+/* Text truncation utilities */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Grid layout improvements */
+.grid-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.grid-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Adaptive Layout System */
+:root {
+  /* Adaptive layout variables - set by useAdaptiveLayout hook */
+  --adaptive-columns: 1;
+  --adaptive-gap: 1rem;
+  --adaptive-padding: 1rem;
+  --adaptive-font-size: 1rem;
+  --adaptive-line-height: 1.5rem;
+}
+
+/* Adaptive grid system */
+.adaptive-grid {
+  grid-template-columns: repeat(var(--adaptive-columns), minmax(0, 1fr));
+  gap: var(--adaptive-gap);
+  padding: var(--adaptive-padding);
+}
+
+/* Adaptive typography */
+.text-adaptive-body {
+  font-size: var(--adaptive-font-size);
+  line-height: var(--adaptive-line-height);
+}
+
+.text-adaptive-heading {
+  font-size: calc(var(--adaptive-font-size) * 1.5);
+  line-height: calc(var(--adaptive-line-height) * 0.9);
+}
+
+.text-adaptive-caption {
+  font-size: calc(var(--adaptive-font-size) * 0.875);
+  line-height: calc(var(--adaptive-line-height) * 0.9);
+}
+
+/* Container queries support */
+.adaptive-container {
+  container-type: inline-size;
+}
+
+/* Container query breakpoints */
+@container (min-width: 320px) {
+  .container-article {
+    --local-padding: 1rem;
+    --local-gap: 0.75rem;
+  }
+}
+
+@container (min-width: 480px) {
+  .container-article {
+    --local-padding: 1.5rem;
+    --local-gap: 1rem;
+  }
+}
+
+@container (min-width: 640px) {
+  .container-article {
+    --local-padding: 2rem;
+    --local-gap: 1.5rem;
+  }
+}
+
+/* Responsive images with adaptive sizing */
+.adaptive-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transition: transform 0.2s ease-in-out;
+}
+
+.responsive-image {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Layout density classes with adaptive support */
+.layout-adaptive-compact {
+  padding: calc(var(--adaptive-padding) * 0.75);
+  gap: calc(var(--adaptive-gap) * 0.75);
+  font-size: calc(var(--adaptive-font-size) * 0.9);
+}
+
+.layout-adaptive-comfortable {
+  padding: var(--adaptive-padding);
+  gap: var(--adaptive-gap);
+  font-size: var(--adaptive-font-size);
+}
+
+.layout-adaptive-spacious {
+  padding: calc(var(--adaptive-padding) * 1.25);
+  gap: calc(var(--adaptive-gap) * 1.25);
+  font-size: calc(var(--adaptive-font-size) * 1.1);
+}
+
+/* Fluid typography with clamp for better scaling */
+@supports (font-size: clamp(1rem, 2vw, 1.5rem)) {
+  .text-adaptive-body {
+    font-size: clamp(0.875rem, 1vw + 0.5rem, var(--adaptive-font-size));
+  }
+
+  .text-adaptive-heading {
+    font-size: clamp(
+      1.25rem,
+      2vw + 1rem,
+      calc(var(--adaptive-font-size) * 1.5)
+    );
+  }
+
+  .text-adaptive-caption {
+    font-size: clamp(
+      0.75rem,
+      0.5vw + 0.5rem,
+      calc(var(--adaptive-font-size) * 0.875)
+    );
+  }
+}
+
+/* Adaptive breakpoint utilities */
+.breakpoint-mobile {
+  display: block;
+}
+
+.breakpoint-tablet {
+  display: none;
+}
+
+.breakpoint-desktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .breakpoint-mobile {
+    display: none;
+  }
+
+  .breakpoint-tablet {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .breakpoint-tablet {
+    display: none;
+  }
+
+  .breakpoint-desktop {
+    display: block;
+  }
 }

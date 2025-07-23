@@ -1,18 +1,42 @@
 
-import React from 'react';
+/**
+ * Header.tsx
+ *
+ * Componente de cabeçalho responsivo para o Personal News Dashboard.
+ * Gerencia a navegação principal, pesquisa, filtros de categoria e controles de usuário.
+ * Implementa design responsivo com menu hambúrguer para dispositivos móveis.
+ *
+ * @author Matheus Pereira
+ * @version 2.0.0
+ */
 
-
+import React, { useState } from 'react';
+import { SearchBar, SearchFilters } from './SearchBar';
+import { HeaderWeatherWidget } from './HeaderWeatherWidget';
+import { Article, FeedCategory } from '../types';
+import { useFavorites } from '../hooks/useFavorites';
+import { useReadStatus } from '../hooks/useReadStatus';
 
 interface HeaderProps {
     onManageFeedsClick: () => void;
     onRefreshClick: () => void;
     selectedCategory: string;
     onCategorySelect: (category: string) => void;
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
     onOpenSettings: () => void;
-    onMyFeedClick: () => void; // New prop
+    onMyFeedClick: () => void;
+    // Search-related props
+    articles: Article[];
+    onSearch: (query: string, filters: SearchFilters) => void;
+    onSearchResultsChange?: (results: Article[]) => void;
+    isSearchActive: boolean;
+    // Read status filtering
+    readStatusFilter: 'all' | 'read' | 'unread';
+    onReadStatusFilterChange: (filter: 'all' | 'read' | 'unread') => void;
+    displayArticles: Article[];
+    // Favorites
+    onOpenFavorites: () => void;
+    // Categories
+    categories: FeedCategory[];
 }
 
 const SettingsIcon: React.FC = () => (
@@ -30,84 +54,354 @@ const MenuIcon: React.FC = () => (
 );
 
 const RefreshIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.5 7.5 0 0112.248 4.852 1 1 0 11-1.952.494A5.503 5.503 0 005.5 9.512V7a1 1 0 112 0v3a1 1 0 01-1 1H3a1 1 0 110-2h1.101A7.501 7.501 0 014 2zM15.101 15H17a1 1 0 110 2h-3a1 1 0 01-1-1v-3a1 1 0 112 0v1.512a5.503 5.503 0 00-9.748-2.356 1 1 0 11-1.952-.494A7.5 7.5 0 0114.5 11.899V10a1 1 0 112 0v3a1 1 0 01-1 1z" clipRule="evenodd" />
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
 );
 
-const ArrowLeftIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+
+
+const HeartIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
     </svg>
 );
 
-const ArrowRightIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-    </svg>
-);
+export const Header: React.FC<HeaderProps> = ({
+    onManageFeedsClick,
+    onRefreshClick,
+    selectedCategory,
+    onCategorySelect,
+    onOpenSettings,
+    onMyFeedClick,
+    articles,
+    onSearch,
+    onSearchResultsChange,
+    readStatusFilter,
+    onReadStatusFilterChange,
+    displayArticles,
+    onOpenFavorites,
+    categories
+}) => {
+    const [showBulkActions, setShowBulkActions] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { markAllAsRead, markAllAsUnread, getReadCount, getUnreadCount } = useReadStatus();
+    const { getFavoritesCount } = useFavorites();
 
-export const Header: React.FC<HeaderProps> = ({ onManageFeedsClick, onRefreshClick, selectedCategory, onCategorySelect, currentPage, totalPages, onPageChange, onOpenSettings, onMyFeedClick }) => {
-    const navItems = ['All', 'Tech', 'Reviews', 'Science', 'Entertainment', 'AI'];
+    const readCount = getReadCount(displayArticles);
+    const unreadCount = getUnreadCount(displayArticles);
+
+    const handleMarkAllAsRead = () => {
+        markAllAsRead(displayArticles);
+        setShowBulkActions(false);
+    };
+
+    const handleMarkAllAsUnread = () => {
+        markAllAsUnread(displayArticles);
+        setShowBulkActions(false);
+    };
 
     return (
         <header className="border-b border-gray-700 sticky top-0 bg-[rgb(var(--color-background))] z-20">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                {/* Main header row */}
                 <div className="flex justify-between items-center h-16">
-                    <div className="flex items-center space-x-8">
-                        <button onClick={onMyFeedClick} className="text-3xl font-black tracking-tighter" style={{fontStyle: 'italic'}}>MyFeed</button>
-                        <nav className="hidden lg:flex items-center space-x-6">
-                            {navItems.map(item => (
-                                <button 
-                                    key={item} 
-                                    onClick={() => onCategorySelect(item)}
-                                    className={`text-sm font-medium transition-colors ${selectedCategory === item ? 'text-[rgb(var(--color-accent))]' : 'text-gray-300 hover:text-white'}`}>
-                                    {item}
+                    <div className="flex items-center space-x-4 sm:space-x-8">
+                        <button
+                            onClick={onMyFeedClick}
+                            className="text-2xl sm:text-3xl font-black tracking-tighter header-title"
+                            style={{fontStyle: 'italic'}}
+                            aria-label="MyFeed - Go to homepage"
+                        >
+                            MyFeed
+                        </button>
+                        <nav id="navigation" className="hidden lg:flex items-center space-x-6" role="navigation" aria-label="Category navigation">
+                            {categories.map(category => (
+                                <button
+                                    key={category.id}
+                                    onClick={() => onCategorySelect(category.id)}
+                                    className={`text-sm font-medium transition-colors flex items-center space-x-1 touch-target ${selectedCategory === category.id ? 'text-[rgb(var(--color-accent))]' : 'text-gray-300 hover:text-white'}`}
+                                    style={{ minHeight: '44px', padding: '8px 12px' }}
+                                    aria-current={selectedCategory === category.id ? 'page' : undefined}
+                                    aria-label={`Filter articles by ${category.name} category`}
+                                >
+                                    <div
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: category.color }}
+                                    />
+                                    <span>{category.name}</span>
                                 </button>
                             ))}
                         </nav>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                         <div className="flex items-center space-x-2">
-                            <button 
-                                onClick={() => onPageChange(currentPage - 1)}
-                                disabled={currentPage === 0}
-                                className="p-1.5 bg-gray-700 text-white rounded-sm hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                                <ArrowLeftIcon />
+                    <div className="flex items-center space-x-2 sm:space-x-4">
+                        {/* Search Bar - hidden on mobile, shown on larger screens */}
+                        <div id="search" className="hidden lg:block w-64 xl:w-80">
+                            <SearchBar
+                                articles={articles}
+                                onSearch={onSearch}
+                                onResultsChange={onSearchResultsChange}
+                                placeholder="Buscar artigos... (Ctrl+K)"
+                                showFilters={true}
+                                className="w-full"
+                            />
+                        </div>
+
+                        {/* Compact actions for medium screens */}
+                        <div className="hidden md:flex lg:hidden items-center space-x-2">
+                            <button
+                                onClick={onRefreshClick}
+                                className="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors touch-target"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
+                                aria-label="Refresh articles"
+                                title="Refresh"
+                            >
+                                <RefreshIcon />
                             </button>
-                            {totalPages > 0 && <span className="text-sm text-gray-400 font-mono">{currentPage + 1} / {totalPages}</span>}
-                            <button 
-                                onClick={() => onPageChange(currentPage + 1)}
-                                disabled={currentPage >= totalPages - 1}
-                                className="p-1.5 bg-gray-700 text-white rounded-sm hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                                <ArrowRightIcon />
+                            <button
+                                onClick={onManageFeedsClick}
+                                className="p-2 bg-[rgb(var(--color-accent))] text-white rounded-md hover:bg-[rgb(var(--color-accent-dark))] transition-colors touch-target"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
+                                aria-label="Manage RSS feeds"
+                                title="Manage Feeds"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
                             </button>
                         </div>
-                        <button 
-                            onClick={onRefreshClick}
-                            className="hidden sm:flex items-center space-x-2 bg-gray-700 text-white px-3 py-1.5 text-sm font-bold rounded-sm hover:bg-gray-600 transition-colors">
-                            <RefreshIcon />
+
+                        {/* Full actions for large screens */}
+                        <div className="hidden lg:flex items-center space-x-4">
+                            <button
+                                onClick={onRefreshClick}
+                                className="flex items-center space-x-2 bg-gray-700 text-white px-3 py-1.5 text-sm font-bold rounded-sm hover:bg-gray-600 transition-colors"
+                                aria-label="Refresh articles"
+                            >
+                                <RefreshIcon />
+                            </button>
+                            <button
+                                onClick={onManageFeedsClick}
+                                className="bg-[rgb(var(--color-accent))] text-white px-4 py-1.5 text-sm font-bold rounded-sm hover:bg-[rgb(var(--color-accent-dark))] transition-colors"
+                                aria-label="Manage RSS feeds"
+                            >
+                                GERENCIAR FEEDS
+                            </button>
+                        </div>
+
+                        {/* Always visible action buttons */}
+                        <button
+                            onClick={onOpenFavorites}
+                            className="relative p-1.5 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors touch-target"
+                            style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            aria-label={`Open favorites (${getFavoritesCount()})`}
+                        >
+                            <HeartIcon />
+                            {getFavoritesCount() > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                                    {getFavoritesCount() > 99 ? '99+' : getFavoritesCount()}
+                                </span>
+                            )}
                         </button>
-                        <button 
-                            onClick={onManageFeedsClick}
-                            className="hidden sm:inline-block bg-[rgb(var(--color-accent))] text-white px-4 py-1.5 text-sm font-bold rounded-sm hover:bg-[rgb(var(--color-accent-dark))] transition-colors">
-                            MANAGE FEEDS
-                        </button>
-                        
-                        <button 
+
+                        <button
+                            id="settings"
                             onClick={onOpenSettings}
-                            className="p-1.5 bg-gray-700 text-white rounded-sm hover:bg-gray-600 transition-colors"
-                            title="Settings"
+                            className="p-1.5 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors touch-target"
+                            style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            aria-label="Open settings"
                         >
                             <SettingsIcon />
                         </button>
-                        <button className="lg:hidden text-gray-300 hover:text-white">
-                            <MenuIcon />
-                        </button>
+
+                        {/* Mobile menu button - only show when navigation is hidden */}
+                        <div className="lg:hidden">
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="text-gray-300 hover:text-white touch-target"
+                                style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                aria-label={mobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
+                                aria-expanded={mobileMenuOpen}
+                                aria-controls="mobile-menu"
+                            >
+                                {mobileMenuOpen ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                ) : (
+                                    <MenuIcon />
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile search bar - shown on smaller screens */}
+                <div className="lg:hidden pb-4">
+                    <SearchBar
+                        articles={articles}
+                        onSearch={onSearch}
+                        onResultsChange={onSearchResultsChange}
+                        placeholder="Buscar artigos..."
+                        showFilters={true}
+                        className="w-full"
+                    />
+                </div>
+
+                {/* Read status controls with centered weather widget */}
+                <div className="border-t border-gray-700 py-3 flex flex-wrap items-center justify-between gap-y-3">
+                    <div className="flex items-center space-x-2 sm:space-x-4">
+                        {/* Read status filter */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-gray-400">Mostrar:</span>
+                            <div className="flex bg-gray-800 rounded-md overflow-hidden">
+                                <button
+                                    onClick={() => onReadStatusFilterChange('all')}
+                                    className={`px-2 sm:px-3 py-2 text-xs font-medium transition-colors touch-target ${
+                                        readStatusFilter === 'all'
+                                            ? 'bg-[rgb(var(--color-accent))] text-white'
+                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                    }`}
+                                    style={{ minHeight: '44px', minWidth: '44px' }}
+                                >
+                                    Todos ({displayArticles.length})
+                                </button>
+                                <button
+                                    onClick={() => onReadStatusFilterChange('unread')}
+                                    className={`px-2 sm:px-3 py-2 text-xs font-medium transition-colors touch-target ${
+                                        readStatusFilter === 'unread'
+                                            ? 'bg-[rgb(var(--color-accent))] text-white'
+                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                    }`}
+                                    style={{ minHeight: '44px', minWidth: '44px' }}
+                                >
+                                    Não lidos ({unreadCount})
+                                </button>
+                                <button
+                                    onClick={() => onReadStatusFilterChange('read')}
+                                    className={`px-2 sm:px-3 py-2 text-xs font-medium transition-colors touch-target ${
+                                        readStatusFilter === 'read'
+                                            ? 'bg-[rgb(var(--color-accent))] text-white'
+                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                    }`}
+                                    style={{ minHeight: '44px', minWidth: '44px' }}
+                                >
+                                    Lidos ({readCount})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Centered Weather Widget - Compact Header Version */}
+                    <div className="hidden md:flex items-center justify-center flex-1 max-w-md mx-4">
+                        <HeaderWeatherWidget />
+                    </div>
+
+                    {/* Mobile Weather Widget - Smaller version for mobile */}
+                    <div className="md:hidden flex items-center justify-center flex-1 mx-2">
+                        <HeaderWeatherWidget />
+                    </div>
+
+                    {/* Bulk actions */}
+                    <div className="flex items-center space-x-2">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowBulkActions(!showBulkActions)}
+                                className="flex items-center space-x-1 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors touch-target"
+                                style={{ minHeight: '44px', minWidth: '44px' }}
+                                aria-expanded={showBulkActions}
+                                aria-haspopup="true"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                </svg>
+                                <span>Ações em Massa</span>
+                            </button>
+
+                            {showBulkActions && (
+                                <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30">
+                                    <div className="py-1">
+                                        <button
+                                            onClick={handleMarkAllAsRead}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+                                        >
+                                            Marcar todos como lidos
+                                        </button>
+                                        <button
+                                            onClick={handleMarkAllAsUnread}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+                                        >
+                                            Marcar todos como não lidos
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Mobile menu - collapsible navigation for smaller screens */}
+            {mobileMenuOpen && (
+                <div id="mobile-menu" className="lg:hidden border-t border-gray-700 bg-gray-800 shadow-lg">
+                    <div className="px-4 py-3 space-y-4">
+                        {/* Mobile category navigation */}
+                        <nav className="mobile-nav flex flex-col space-y-2" role="navigation" aria-label="Mobile category navigation">
+                            {categories.map(category => (
+                                <button
+                                    key={category.id}
+                                    onClick={() => {
+                                        onCategorySelect(category.id);
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className={`text-sm font-medium transition-colors flex items-center space-x-2 p-3 rounded-md touch-target ${
+                                        selectedCategory === category.id
+                                            ? 'bg-[rgb(var(--color-accent))] text-white'
+                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                    }`}
+                                    aria-current={selectedCategory === category.id ? 'page' : undefined}
+                                    aria-label={`Filter articles by ${category.name} category`}
+                                >
+                                    <div
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: category.color }}
+                                    />
+                                    <span>{category.name}</span>
+                                </button>
+                            ))}
+                        </nav>
+
+                        {/* Mobile action buttons */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => {
+                                    onRefreshClick();
+                                    setMobileMenuOpen(false);
+                                }}
+                                className="flex items-center justify-center space-x-2 bg-gray-700 text-white p-3 text-sm font-bold rounded-md hover:bg-gray-600 transition-colors"
+                                aria-label="Refresh articles"
+                            >
+                                <RefreshIcon />
+                                <span>Atualizar</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onManageFeedsClick();
+                                    setMobileMenuOpen(false);
+                                }}
+                                className="flex items-center justify-center space-x-2 bg-[rgb(var(--color-accent))] text-white p-3 text-sm font-bold rounded-md hover:bg-[rgb(var(--color-accent-dark))] transition-colors"
+                                aria-label="Manage RSS feeds"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                <span>Gerenciar Feeds</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };

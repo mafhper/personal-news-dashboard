@@ -9,13 +9,15 @@ interface ArticleListProps {
 
 export const ArticleList: React.FC<ArticleListProps> = ({ articles }) => {
     return (
-        <div>
-            <h3 className="text-lg font-bold text-[rgb(var(--color-accent))] mb-4 uppercase tracking-wider">Top Stories</h3>
-            <div className="space-y-5">
+        <section aria-labelledby="top-stories-heading">
+            <h3 id="top-stories-heading" className="text-lg font-bold text-[rgb(var(--color-accent))] mb-4 uppercase tracking-wider">Top Stories</h3>
+            <ol className="space-y-5" role="list" aria-label="List of top news stories">
                 {articles.map((article, index) => (
-                    <ArticleItem key={article.link + index} article={article} index={index + 1} />
+                    <li key={article.link + index} role="listitem">
+                        <ArticleItem article={article} index={index + 1} />
+                    </li>
                 ))}
-            </div>
-        </div>
+            </ol>
+        </section>
     );
 };

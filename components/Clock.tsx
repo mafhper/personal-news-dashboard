@@ -21,9 +21,17 @@ export const Clock: React.FC<ClockProps> = ({ city, timeFormat }) => {
         timeZone: city ? undefined : undefined, // Will try to infer from city, or use local if undefined
     };
 
+    const timeString = time.toLocaleTimeString([], options);
+
     return (
-        <span className="text-xl font-mono font-bold">
-            {time.toLocaleTimeString([], options)}
-        </span>
+        <time
+            className="text-xl font-mono font-bold"
+            dateTime={time.toISOString()}
+            aria-label={`Current time: ${timeString} in ${timeFormat} format`}
+            role="timer"
+            aria-live="off" // Don't announce every second
+        >
+            {timeString}
+        </time>
     );
 };

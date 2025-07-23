@@ -61,46 +61,95 @@ export const WeatherWidget: React.FC<{ timeFormat: '12h' | '24h' }> = ({ timeFor
     };
 
     return (
-        <div className="bg-gray-800/50 p-4 rounded-lg mb-6">
+        <section
+            className="bg-gray-800/50 p-4 rounded-lg mb-6"
+            aria-labelledby="weather-widget-heading"
+            role="region"
+        >
+            <h3 id="weather-widget-heading" className="sr-only">Weather Information</h3>
             {isEditing ? (
-                <div className="flex items-center space-x-2">
+                <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="flex items-center space-x-2">
+                    <label htmlFor="city-input" className="sr-only">Enter city name</label>
                     <input
+                        id="city-input"
                         type="text"
                         value={inputCity}
                         onChange={(e) => setInputCity(e.target.value)}
                         className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent)))]"
                         onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                         autoFocus
+                        aria-label="City name for weather"
+                        placeholder="Enter city name"
                     />
-                    <button onClick={handleSave} className="bg-[rgb(var(--color-accent))] hover:bg-[rgb(var(--color-accent-dark))] text-white font-bold py-1 px-3 rounded">Save</button>
-                    <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-white">Cancel</button>
-                </div>
+                    <button
+                        type="submit"
+                        className="bg-[rgb(var(--color-accent))] hover:bg-[rgb(var(--color-accent-dark))] text-white font-bold py-1 px-3 rounded"
+                        aria-label="Save city selection"
+                    >
+                        Save
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        className="text-gray-400 hover:text-white"
+                        aria-label="Cancel city editing"
+                    >
+                        Cancel
+                    </button>
+                </form>
             ) : (
                 <div className="flex flex-col w-full">
                     {weather ? (
                         <>
                             <div className="flex justify-between items-center w-full">
                                 <div>
-                                    <p className="font-bold text-xl">{city}</p>
-                                    <p className="text-sm text-gray-400">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                                    <p className="font-bold text-xl" aria-label={`Current location: ${city}`}>{city}</p>
+                                    <time
+                                        className="text-sm text-gray-400"
+                                        dateTime={new Date().toISOString()}
+                                        aria-label={`Today is ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`}
+                                    >
+                                        {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                    </time>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <span className="text-4xl font-bold">{Math.round(weather.temperature)}°C</span>
-                                    <WeatherIcon code={weather.weatherCode} isDay={weather.isDay} />
+                                    <span
+                                        className="text-4xl font-bold"
+                                        aria-label={`Current temperature: ${Math.round(weather.temperature)} degrees Celsius`}
+                                    >
+                                        {Math.round(weather.temperature)}°C
+                                    </span>
+                                    <div aria-label={`Weather condition: ${weather.isDay ? 'Day' : 'Night'} time`}>
+                                        <WeatherIcon code={weather.weatherCode} isDay={weather.isDay} />
+                                    </div>
                                     <Clock city={city} timeFormat={timeFormat} />
                                 </div>
                             </div>
                             <div className="w-full text-left mt-2">
-                                <button onClick={() => { setInputCity(city); setIsEditing(true); }} className="text-gray-400 hover:text-white text-xs">Change</button>
+                                <button
+                                    onClick={() => { setInputCity(city); setIsEditing(true); }}
+                                    className="text-gray-400 hover:text-white text-xs"
+                                    aria-label={`Change weather location from ${city}`}
+                                >
+                                    Change
+                                </button>
                             </div>
                         </>
                     ) : (
-                        <div className="w-full text-center text-gray-400">
-                            {error ? error : `Loading weather for ${city}...`}
+                        <div
+                            className="w-full text-center text-gray-400"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            {error ? (
+                                <span role="alert">{error}</span>
+                            ) : (
+                                <span>Loading weather for {city}...</span>
+                            )}
                         </div>
                     )}
                 </div>
             )}
-        </div>
+        </section>
     );
 };
