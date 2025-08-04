@@ -8,6 +8,7 @@ import {
   exportTheme,
   importTheme,
   defaultThemePresets,
+  hexToRgb,
 } from '../services/themeUtils';
 import type { ExtendedTheme } from '../types';
 
@@ -40,6 +41,111 @@ Object.defineProperty(window, 'matchMedia', {
 describe('themeUtils', () => {
   beforeEach(() => {
     mockSetProperty.mockClear();
+  });
+
+  describe('hexToRgb', () => {
+    it('should convert 6-digit hex colors to RGB string format', () => {
+      expect(hexToRgb('#FF0000')).toBe('255 0 0');
+      expect(hexToRgb('#00FF00')).toBe('0 255 0');
+      expect(hexToRgb('#0000FF')).toBe('0 0 255');
+      expect(hexToRgb('#FFFFFF')).toBe('255 255 255');
+      expect(hexToRgb('#000000')).toBe('0 0 0');
+    });
+
+    it('should convert 6-digit hex colors without # prefix', () => {
+      expect(hexToRgb('FF0000')).toBe('255 0 0');
+      expect(hexToRgb('00FF00')).toBe('0 255 0');
+      expect(hexToRgb('0000FF')).toBe('0 0 255');
+    });
+
+    it('should convert 3-digit hex colors to RGB string format', () => {
+      expect(hexToRgb('#F00')).toBe('255 0 0');
+      expect(hexToRgb('#0F0')).toBe('0 255 0');
+      expect(hexToRgb('#00F')).toBe('0 0 255');
+      expect(hexToRgb('#FFF')).toBe('255 255 255');
+      expect(hexToRgb('#000')).toBe('0 0 0');
+    });
+
+    it('should convert 3-digit hex colors without # prefix', () => {
+      expect(hexToRgb('F00')).toBe('255 0 0');
+      expect(hexToRgb('0F0')).toBe('0 255 0');
+      expect(hexToRgb('00F')).toBe('0 0 255');
+    });
+
+    it('should handle lowercase hex colors', () => {
+      expect(hexToRgb('#ff0000')).toBe('255 0 0');
+      expect(hexToRgb('#00ff00')).toBe('0 255 0');
+      expect(hexToRgb('#0000ff')).toBe('0 0 255');
+      expect(hexToRgb('#abc123')).toBe('171 193 35');
+    });
+
+    it('should handle mixed case hex colors', () => {
+      expect(hexToRgb('#Ff0000')).toBe('255 0 0');
+      expect(hexToRgb('#00Ff00')).toBe('0 255 0');
+      expect(hexToRgb('#AbC123')).toBe('171 193 35');
+    });
+
+    it('should convert specific theme colors accurately', () => {
+      // Test colors from the design document
+      expect(hexToRgb('#1E88E5')).toBe('30 136 229'); // Noite Urbana primary
+      expect(hexToRgb('#FFC107')).toBe('255 193 7');   // Noite Urbana accent
+      expect(hexToRgb('#121212')).toBe('18 18 18');    // Noite Urbana background
+      expect(hexToRgb('#43A047')).toBe('67 160 71');   // Verde Noturno primary
+      expect(hexToRgb('#8E24AA')).toBe('142 36 170');  // Roxo Nebuloso primary
+      expect(hexToRgb('#1976D2')).toBe('25 118 210');  // Solar Clean primary
+      expect(hexToRgb('#EC407A')).toBe('236 64 122');  // Verão Pastel primary
+      expect(hexToRgb('#00ACC1')).toBe('0 172 193');   // Minimal Ice primary
+    });
+
+    it('should throw error for invalid hex format', () => {
+      expect(() => hexToRgb('#GG0000')).toThrow('Invalid hex color format: #GG0000. Expected format: #RRGGBB or #RGB');
+      expect(() => hexToRgb('#12345')).toThrow('Invalid hex color format: #12345. Expected format: #RRGGBB or #RGB');
+      expect(() => hexToRgb('#1234567')).toThrow('Invalid hex color format: #1234567. Expected format: #RRGGBB or #RGB');
+      expect(() => hexToRgb('invalid')).toThrow('Invalid hex color format: invalid. Expected format: #RRGGBB or #RGB');
+      expect(() => hexToRgb('')).toThrow('Invalid hex color format: . Expected format: #RRGGBB or #RGB');
+    });
+
+    it('should throw error for non-hex characters', () => {
+      expect(() => hexToRgb('#GGGGGG')).toThrow('Invalid hex color format');
+      expect(() => hexToRgb('#12345G')).toThrow('Invalid hex color format');
+      expect(() => hexToRgb('ZZZZZZ')).toThrow('Invalid hex color format');
+    });
+
+    it('should handle edge cases with valid hex values', () => {
+      expect(hexToRgb('#808080')).toBe('128 128 128'); // Medium gray
+      expect(hexToRgb('#7F7F7F')).toBe('127 127 127'); // Just below 128
+      expect(hexToRgb('#010101')).toBe('1 1 1');       // Almost black
+      expect(hexToRgb('#FEFEFE')).toBe('254 254 254'); // Almost white
+    });
+
+    it('should validate RGB output is in correct range', () => {
+      const testColors = ['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#808080'];
+
+      testColors.forEach(color => {
+        const result = hexToRgb(color);
+        const [r, g, b] = result.split(' ').map(Number);
+
+        expect(r).toBeGreaterThanOrEqual(0);
+        expect(r).toBeLessThanOrEqual(255);
+        expect(g).toBeGreaterThanOrEqual(0);
+        expect(g).toBeLessThanOrEqual(255);
+        expect(b).toBeGreaterThanOrEqual(0);
+        expect(b).toBeLessThanOrEqual(255);
+
+        expect(Number.isInteger(r)).toBe(true);
+        expect(Number.isInteger(g)).toBe(true);
+        expect(Number.isInteger(b)).toBe(true);
+      });
+    });
+
+    it('should produce consistent results for equivalent 3-digit and 6-digit hex', () => {
+      expect(hexToRgb('#F00')).toBe(hexToRgb('#FF0000'));
+      expect(hexToRgb('#0F0')).toBe(hexToRgb('#00FF00'));
+      expect(hexToRgb('#00F')).toBe(hexToRgb('#0000FF'));
+      expect(hexToRgb('#FFF')).toBe(hexToRgb('#FFFFFF'));
+      expect(hexToRgb('#000')).toBe(hexToRgb('#000000'));
+      expect(hexToRgb('#ABC')).toBe(hexToRgb('#AABBCC'));
+    });
   });
 
   describe('validateTheme', () => {

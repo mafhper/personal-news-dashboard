@@ -9,9 +9,17 @@
  * @version 2.0.0
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import { useFeedCategories } from '../hooks/useFeedCategories';
-import type { FeedSource, FeedCategory } from '../types';
+import React, { useState, useRef, useCallback } from "react";
+import { useFeedCategories } from "../hooks/useFeedCategories";
+import { useLogger } from "../services/logger";
+import type { FeedSource, FeedCategory } from "../types";
+import { useNotificationReplacements } from "../hooks/useNotificationReplacements";
+import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Badge } from "./ui/Badge";
+import { IconButton } from "./ui/IconButton";
+import { ActionIcons, StatusIcons } from "./icons";
 
 interface FeedCategoryManagerProps {
   feeds: FeedSource[];
@@ -20,15 +28,16 @@ interface FeedCategoryManagerProps {
 }
 
 interface DragState {
-  draggedItem: { type: 'feed' | 'category'; id: string; data: any } | null;
+  draggedItem: { type: "feed" | "category"; id: string; data: any } | null;
   dragOverCategory: string | null;
 }
 
 export const FeedCategoryManager: React.FC<FeedCategoryManagerProps> = ({
   feeds,
   setFeeds,
-  onClose
+  onClose,
 }) => {
+  const logger = useLogger("FeedCategoryManager");
   const {
     categories,
     createCategory,
@@ -39,196 +48,336 @@ export const FeedCategoryManager: React.FC<FeedCategoryManagerProps> = ({
     moveFeedToCategory,
     exportCategories,
     importCategories,
-    resetToDefaults
+    resetToDefaults,
   } = useFeedCategories();
+
+  // Hook para notificações integradas
+  const { alertSuccess, alertError, confirmDanger } =
+    useNotificationReplacements();
 
   const [dragState, setDragState] = useState<DragState>({
     draggedItem: null,
-    dragOverCategory: null
+    dragOverCategory: null,
   });
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingCategoryForm, setEditingCategoryForm] = useState({
+    name: "",
+    color: "#3B82F6",
+    description: "",
+  });
   const [newCategoryForm, setNewCategoryForm] = useState({
-    name: '',
-    color: '#3B82F6',
-    description: ''
+    name: "",
+    color: "#3B82F6",
+    description: "",
   });
   const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categorizedFeeds = getCategorizedFeeds(feeds);
 
-  const handleDragStart = useCallback((e: React.DragEvent, type: 'feed' | 'category', id: string, data: any) => {
-    setDragState(prev => ({
-      ...prev,
-      draggedItem: { type, id, data }
-    }));
-    e.dataTransfer.effectAllowed = 'move';
-  }, []);
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, type: "feed" | "category", id: string, data: any) => {
+      setDragState((prev) => ({
+        ...prev,
+        draggedItem: { type, id, data },
+      }));
+      e.dataTransfer.effectAllowed = "move";
+    },
+    []
+  );
 
-  const handleDragOver = useCallback((e: React.DragEvent, categoryId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragState(prev => ({
-      ...prev,
-      dragOverCategory: categoryId
-    }));
-  }, []);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, categoryId: string) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragState((prev) => ({
+        ...prev,
+        dragOverCategory: categoryId,
+      }));
+    },
+    []
+  );
 
   const handleDragLeave = useCallback(() => {
-    setDragState(prev => ({
+    setDragState((prev) => ({
       ...prev,
-      dragOverCategory: null
+      dragOverCategory: null,
     }));
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, targetCategoryId: string) => {
-    e.preventDefault();
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetCategoryId: string) => {
+      e.preventDefault();
 
-    if (!dragState.draggedItem) return;
+      if (!dragState.draggedItem) return;
 
-    const { type, id, data } = dragState.draggedItem;
+      const { type, id, data } = dragState.draggedItem;
 
-    if (type === 'feed') {
-      moveFeedToCategory(data.url, targetCategoryId, feeds, setFeeds);
-    } else if (type === 'category') {
-      // Handle category reordering
-      const targetCategory = categories.find(c => c.id === targetCategoryId);
-      const draggedCategory = categories.find(c => c.id === id);
+      if (type === "feed") {
+        moveFeedToCategory(data.url, targetCategoryId, feeds, setFeeds);
+      } else if (type === "category") {
+        // Handle category reordering
+        const targetCategory = categories.find(
+          (c) => c.id === targetCategoryId
+        );
+        const draggedCategory = categories.find((c) => c.id === id);
 
-      if (targetCategory && draggedCategory) {
-        const newOrder = [...categories]
-          .sort((a, b) => a.order - b.order)
-          .map(c => c.id);
+        if (targetCategory && draggedCategory) {
+          const newOrder = [...categories]
+            .sort((a, b) => a.order - b.order)
+            .map((c) => c.id);
 
-        const draggedIndex = newOrder.indexOf(id);
-        const targetIndex = newOrder.indexOf(targetCategoryId);
+          const draggedIndex = newOrder.indexOf(id);
+          const targetIndex = newOrder.indexOf(targetCategoryId);
 
-        newOrder.splice(draggedIndex, 1);
-        newOrder.splice(targetIndex, 0, id);
+          newOrder.splice(draggedIndex, 1);
+          newOrder.splice(targetIndex, 0, id);
 
-        reorderCategories(newOrder);
+          reorderCategories(newOrder);
+        }
       }
-    }
 
-    setDragState({
-      draggedItem: null,
-      dragOverCategory: null
-    });
-  }, [dragState.draggedItem, categories, feeds, setFeeds, moveFeedToCategory, reorderCategories]);
-
-  const handleCreateCategory = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (newCategoryForm.name.trim()) {
-      createCategory(
-        newCategoryForm.name.trim(),
-        newCategoryForm.color,
-        newCategoryForm.description.trim() || undefined
-      );
-      setNewCategoryForm({ name: '', color: '#3B82F6', description: '' });
-      setShowNewCategoryForm(false);
-    }
-  }, [newCategoryForm, createCategory]);
-
-  const handleUpdateCategory = useCallback((categoryId: string, updates: Partial<FeedCategory>) => {
-    updateCategory(categoryId, updates);
-    setEditingCategory(null);
-  }, [updateCategory]);
-
-  const handleDeleteCategory = useCallback((categoryId: string) => {
-    if (confirm('Are you sure you want to delete this category? Feeds in this category will become uncategorized.')) {
-      // Move feeds from deleted category to uncategorized
-      const feedsInCategory = categorizedFeeds[categoryId] || [];
-      feedsInCategory.forEach(feed => {
-        moveFeedToCategory(feed.url, 'uncategorized', feeds, setFeeds);
+      setDragState({
+        draggedItem: null,
+        dragOverCategory: null,
       });
+    },
+    [
+      dragState.draggedItem,
+      categories,
+      feeds,
+      setFeeds,
+      moveFeedToCategory,
+      reorderCategories,
+    ]
+  );
 
-      deleteCategory(categoryId);
-    }
-  }, [categorizedFeeds, feeds, setFeeds, moveFeedToCategory, deleteCategory]);
+  const handleCreateCategory = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (newCategoryForm.name.trim()) {
+        createCategory(
+          newCategoryForm.name.trim(),
+          newCategoryForm.color,
+          newCategoryForm.description.trim() || undefined
+        );
+        setNewCategoryForm({ name: "", color: "#3B82F6", description: "" });
+        setShowNewCategoryForm(false);
+      }
+    },
+    [newCategoryForm, createCategory]
+  );
+
+  const handleStartEditCategory = useCallback((category: FeedCategory) => {
+    setEditingCategory(category.id);
+    setEditingCategoryForm({
+      name: category.name,
+      color: category.color,
+      description: category.description || "",
+    });
+  }, []);
+
+  const handleSaveEditCategory = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (editingCategory && editingCategoryForm.name.trim()) {
+        updateCategory(editingCategory, {
+          name: editingCategoryForm.name.trim(),
+          color: editingCategoryForm.color,
+          description: editingCategoryForm.description.trim() || undefined,
+        });
+        setEditingCategory(null);
+        setEditingCategoryForm({ name: "", color: "#3B82F6", description: "" });
+      }
+    },
+    [editingCategory, editingCategoryForm, updateCategory]
+  );
+
+  const handleCancelEditCategory = useCallback(() => {
+    setEditingCategory(null);
+    setEditingCategoryForm({ name: "", color: "#3B82F6", description: "" });
+  }, []);
+
+  const handleDeleteCategory = useCallback(
+    async (categoryId: string) => {
+      const category = categories.find((c) => c.id === categoryId);
+      const feedsInCategory = categorizedFeeds[categoryId] || [];
+      const feedCount = feedsInCategory.length;
+
+      let confirmMessage = `Tem certeza que deseja excluir a categoria "${category?.name}"?`;
+
+      if (feedCount > 0) {
+        confirmMessage += `\n\nEsta ação irá mover ${feedCount} feed${
+          feedCount > 1 ? "s" : ""
+        } para "Não categorizados":`;
+        feedsInCategory.slice(0, 3).forEach((feed) => {
+          confirmMessage += `\n• ${feed.customTitle || feed.url}`;
+        });
+        if (feedCount > 3) {
+          confirmMessage += `\n• ... e mais ${feedCount - 3} feed${
+            feedCount - 3 > 1 ? "s" : ""
+          }`;
+        }
+      }
+
+      if (await confirmDanger(confirmMessage)) {
+        // Move feeds from deleted category to uncategorized
+        feedsInCategory.forEach((feed) => {
+          moveFeedToCategory(feed.url, "uncategorized", feeds, setFeeds);
+        });
+
+        deleteCategory(categoryId);
+
+        // Show success message
+        const successMessage =
+          feedCount > 0
+            ? `Categoria "${
+                category?.name
+              }" excluída com sucesso. ${feedCount} feed${
+                feedCount > 1 ? "s foram movidos" : " foi movido"
+              } para "Não categorizados".`
+            : `Categoria "${category?.name}" excluída com sucesso.`;
+
+        // Use a timeout to show the message after the UI updates
+        setTimeout(async () => {
+          await alertSuccess(successMessage);
+        }, 100);
+      }
+    },
+    [
+      categories,
+      categorizedFeeds,
+      feeds,
+      setFeeds,
+      moveFeedToCategory,
+      deleteCategory,
+    ]
+  );
 
   const handleExportCategories = useCallback(() => {
     const data = exportCategories();
-    const blob = new Blob([data], { type: 'application/json' });
+    const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `feed-categories-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `feed-categories-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [exportCategories]);
 
-  const handleImportCategories = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const content = await file.text();
-        const success = importCategories(content);
-        if (success) {
-          alert('Categories imported successfully!');
-        } else {
-          alert('Failed to import categories. Please check the file format.');
+  const handleImportCategories = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        try {
+          const content = await file.text();
+          const success = importCategories(content);
+          if (success) {
+            await alertSuccess("Categories imported successfully!");
+          } else {
+            await alertError(
+              "Failed to import categories. Please check the file format."
+            );
+          }
+        } catch (error) {
+          await alertError("Failed to read the file.");
+          logger.error(
+            "Failed to read categories import file",
+            error as Error,
+            {
+              additionalData: {
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+              },
+            }
+          );
         }
-      } catch (error) {
-        alert('Failed to read the file.');
-        console.error(error);
       }
-    }
-  }, [importCategories]);
+    },
+    [importCategories]
+  );
 
-  const handleResetToDefaults = useCallback(() => {
-    if (confirm('Are you sure you want to reset to default categories? This will remove all custom categories and reset feed assignments.')) {
+  const handleResetToDefaults = useCallback(async () => {
+    if (
+      await confirmDanger(
+        "Are you sure you want to reset to default categories? This will remove all custom categories and reset feed assignments."
+      )
+    ) {
       resetToDefaults();
       // Reset all feed categories
-      const resetFeeds = feeds.map(feed => ({ ...feed, categoryId: undefined }));
+      const resetFeeds = feeds.map((feed) => ({
+        ...feed,
+        categoryId: undefined,
+      }));
       setFeeds(resetFeeds);
     }
   }, [resetToDefaults, feeds, setFeeds]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6" role="dialog" aria-labelledby="category-manager-title">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
-        <h2 id="category-manager-title" className="text-xl sm:text-2xl font-bold text-white">
-          Feed Category Manager
-        </h2>
-        <button
+    <div
+      className="w-full max-w-7xl mx-auto p-4 sm:p-6"
+      role="dialog"
+      aria-labelledby="category-manager-title"
+    >
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-4">
+        <div className="flex items-center space-x-3">
+          <StatusIcons.Theme className="w-8 h-8 text-blue-500" />
+          <div>
+            <h2
+              id="category-manager-title"
+              className="text-2xl font-bold text-white"
+            >
+              Feed Category Manager
+            </h2>
+            <p className="text-[rgb(var(--color-textSecondary))] text-sm mt-1">
+              Organize your feeds into categories with drag and drop
+            </p>
+          </div>
+        </div>
+        <IconButton
           onClick={onClose}
-          className="self-end sm:self-auto text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700 rounded-md"
+          variant="ghost"
+          size="sm"
+          icon={<ActionIcons.Close />}
           aria-label="Close category manager"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        />
       </div>
 
       {/* Action buttons */}
-      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-6">
-        <button
+      <div className="flex flex-wrap gap-3 mb-8">
+        <Button
           onClick={() => setShowNewCategoryForm(true)}
-          className="bg-[rgb(var(--color-accent))] hover:bg-[rgb(var(--color-accent-dark))] text-white px-4 py-2 rounded-lg transition-colors"
+          variant="primary"
+          icon={<ActionIcons.Add />}
         >
           Create Category
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleExportCategories}
-          className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors"
+          variant="secondary"
+          icon={<ActionIcons.Export />}
         >
           Export Categories
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => fileInputRef.current?.click()}
-          className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors"
+          variant="secondary"
+          icon={<ActionIcons.Import />}
         >
           Import Categories
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleResetToDefaults}
-          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg transition-colors"
+          variant="danger"
+          icon={<ActionIcons.Refresh />}
         >
           Reset to Defaults
-        </button>
+        </Button>
       </div>
 
       <input
@@ -241,228 +390,421 @@ export const FeedCategoryManager: React.FC<FeedCategoryManagerProps> = ({
 
       {/* New category form */}
       {showNewCategoryForm && (
-        <div className="bg-gray-800 p-4 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Create New Category</h3>
-          <form onSubmit={handleCreateCategory} className="space-y-4">
+        <Card className="mb-8" elevation="md">
+          <div className="flex items-center mb-6">
+            <ActionIcons.Add className="w-5 h-5 mr-2 text-blue-500" />
+            <h3 className="text-lg font-semibold text-white">
+              Create New Category
+            </h3>
+          </div>
+          <form onSubmit={handleCreateCategory} className="space-y-6">
             <div>
-              <label htmlFor="category-name" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="category-name"
+                className="block text-sm font-medium text-[rgb(var(--color-text))] mb-2"
+              >
                 Category Name
               </label>
-              <input
+              <Input
                 id="category-name"
                 type="text"
                 value={newCategoryForm.name}
-                onChange={(e) => setNewCategoryForm(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full bg-gray-700 text-white rounded-md px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))]"
+                onChange={(e) =>
+                  setNewCategoryForm((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
+                placeholder="Enter category name"
                 required
               />
             </div>
             <div>
-              <label htmlFor="category-color" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="category-color"
+                className="block text-sm font-medium text-[rgb(var(--color-text))] mb-2"
+              >
                 Color
               </label>
-              <input
-                id="category-color"
-                type="color"
-                value={newCategoryForm.color}
-                onChange={(e) => setNewCategoryForm(prev => ({ ...prev, color: e.target.value }))}
-                className="w-16 h-10 bg-gray-700 rounded-md border border-gray-600"
-              />
+              <div className="flex items-center space-x-3">
+                <input
+                  id="category-color"
+                  type="color"
+                  value={newCategoryForm.color}
+                  onChange={(e) =>
+                    setNewCategoryForm((prev) => ({
+                      ...prev,
+                      color: e.target.value,
+                    }))
+                  }
+                  className="w-12 h-12 bg-gray-700 rounded-lg border border-[rgb(var(--color-border))] cursor-pointer"
+                />
+                <div className="flex items-center space-x-2">
+                  <div
+                    className="w-6 h-6 rounded-full border-2 border-[rgb(var(--color-border))]"
+                    style={{ backgroundColor: newCategoryForm.color }}
+                  />
+                  <span className="text-sm text-[rgb(var(--color-text))]">Preview</span>
+                </div>
+              </div>
             </div>
             <div>
-              <label htmlFor="category-description" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="category-description"
+                className="block text-sm font-medium text-[rgb(var(--color-text))] mb-2"
+              >
                 Description (optional)
               </label>
               <textarea
                 id="category-description"
                 value={newCategoryForm.description}
-                onChange={(e) => setNewCategoryForm(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full bg-gray-700 text-white rounded-md px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))] resize-none"
-                rows={2}
+                onChange={(e) =>
+                  setNewCategoryForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                className="w-full bg-[rgb(var(--color-surface))] text-white rounded-lg px-4 py-3 border border-[rgb(var(--color-border))] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={3}
+                placeholder="Enter a description for this category..."
               />
             </div>
-            <div className="flex gap-2">
-              <button
+            <div className="flex gap-3">
+              <Button
                 type="submit"
-                className="bg-[rgb(var(--color-accent))] hover:bg-[rgb(var(--color-accent-dark))] text-white px-4 py-2 rounded-lg transition-colors"
+                variant="primary"
+                icon={<ActionIcons.Save />}
               >
-                Create
-              </button>
-              <button
+                Create Category
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setShowNewCategoryForm(false)}
-                className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors"
+                variant="secondary"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
+      )}
+
+      {/* Edit category form */}
+      {editingCategory && (
+        <Card className="mb-8 ring-2 ring-blue-500" elevation="md">
+          <div className="flex items-center mb-6">
+            <ActionIcons.Edit className="w-5 h-5 mr-2 text-blue-500" />
+            <h3 className="text-lg font-semibold text-white">Edit Category</h3>
+          </div>
+          <form onSubmit={handleSaveEditCategory} className="space-y-6">
+            <div>
+              <label
+                htmlFor="edit-category-name"
+                className="block text-sm font-medium text-[rgb(var(--color-text))] mb-2"
+              >
+                Category Name
+              </label>
+              <Input
+                id="edit-category-name"
+                type="text"
+                value={editingCategoryForm.name}
+                onChange={(e) =>
+                  setEditingCategoryForm((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="edit-category-color"
+                className="block text-sm font-medium text-[rgb(var(--color-text))] mb-2"
+              >
+                Color
+              </label>
+              <div className="flex items-center space-x-3">
+                <input
+                  id="edit-category-color"
+                  type="color"
+                  value={editingCategoryForm.color}
+                  onChange={(e) =>
+                    setEditingCategoryForm((prev) => ({
+                      ...prev,
+                      color: e.target.value,
+                    }))
+                  }
+                  className="w-12 h-12 bg-gray-700 rounded-lg border border-[rgb(var(--color-border))] cursor-pointer"
+                />
+                <div className="flex items-center space-x-2">
+                  <div
+                    className="w-6 h-6 rounded-full border-2 border-[rgb(var(--color-border))]"
+                    style={{ backgroundColor: editingCategoryForm.color }}
+                  />
+                  <span className="text-sm text-[rgb(var(--color-text))]">Preview</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                htmlFor="edit-category-description"
+                className="block text-sm font-medium text-[rgb(var(--color-text))] mb-2"
+              >
+                Description (optional)
+              </label>
+              <textarea
+                id="edit-category-description"
+                value={editingCategoryForm.description}
+                onChange={(e) =>
+                  setEditingCategoryForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                className="w-full bg-[rgb(var(--color-surface))] text-white rounded-lg px-4 py-3 border border-[rgb(var(--color-border))] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={3}
+                placeholder="Enter a description for this category..."
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="submit"
+                variant="primary"
+                icon={<ActionIcons.Save />}
+              >
+                Save Changes
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCancelEditCategory}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
 
       {/* Categories and feeds */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {categories.map(category => (
-          <div
+        {categories.map((category) => (
+          <Card
             key={category.id}
-            className={`bg-gray-800 rounded-lg p-4 transition-all ${
-              dragState.dragOverCategory === category.id ? 'ring-2 ring-[rgb(var(--color-accent))] bg-gray-700' : ''
+            className={`transition-all ${
+              dragState.dragOverCategory === category.id
+                ? "ring-2 ring-blue-500 bg-blue-500/10"
+                : ""
             }`}
             onDragOver={(e) => handleDragOver(e, category.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, category.id)}
+            elevation="sm"
           >
             {/* Category header */}
             <div
-              className="flex items-center justify-between mb-3 cursor-move"
+              className="flex items-center justify-between mb-4 cursor-move"
               draggable={!category.isDefault}
-              onDragStart={(e) => handleDragStart(e, 'category', category.id, category)}
+              onDragStart={(e) =>
+                handleDragStart(e, "category", category.id, category)
+              }
             >
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <div
-                  className="w-4 h-4 rounded-full"
+                  className="w-5 h-5 rounded-full shadow-sm"
                   style={{ backgroundColor: category.color }}
                 />
-                {editingCategory === category.id ? (
-                  <input
-                    type="text"
-                    defaultValue={category.name}
-                    onBlur={(e) => handleUpdateCategory(category.id, { name: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleUpdateCategory(category.id, { name: e.currentTarget.value });
-                      } else if (e.key === 'Escape') {
-                        setEditingCategory(null);
-                      }
-                    }}
-                    className="bg-gray-700 text-white px-2 py-1 rounded text-sm"
-                    autoFocus
-                  />
-                ) : (
-                  <h3 className="font-semibold text-white">{category.name}</h3>
+                <h3 className="font-semibold text-white text-lg">
+                  {category.name}
+                </h3>
+                {category.isDefault && (
+                  <Badge variant="secondary" className="text-xs">
+                    default
+                  </Badge>
                 )}
               </div>
 
               {!category.isDefault && (
                 <div className="flex space-x-1">
-                  <button
-                    onClick={() => setEditingCategory(category.id)}
-                    className="text-gray-400 hover:text-white p-1"
+                  <IconButton
+                    onClick={() => handleStartEditCategory(category)}
+                    variant="ghost"
+                    size="sm"
+                    icon={<ActionIcons.Edit />}
                     aria-label={`Edit ${category.name} category`}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button
+                  />
+                  <IconButton
                     onClick={() => handleDeleteCategory(category.id)}
-                    className="text-red-400 hover:text-red-300 p-1"
+                    variant="ghost"
+                    size="sm"
+                    icon={<ActionIcons.Delete />}
+                    className="text-red-400 hover:text-red-300"
                     aria-label={`Delete ${category.name} category`}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  />
                 </div>
               )}
             </div>
 
             {category.description && (
-              <p className="text-gray-400 text-sm mb-3">{category.description}</p>
+              <p className="text-[rgb(var(--color-textSecondary))] text-sm mb-4 leading-relaxed">
+                {category.description}
+              </p>
             )}
 
             {/* Feeds in category */}
-            <div className="space-y-2 min-h-[100px]">
-              <div className="text-xs text-gray-500 mb-2">
-                {categorizedFeeds[category.id]?.length || 0} feed(s)
+            <div className="space-y-3 min-h-[120px]">
+              <div className="flex items-center justify-between">
+                <Badge variant="secondary" className="text-xs">
+                  {categorizedFeeds[category.id]?.length || 0} feeds
+                </Badge>
+                {(categorizedFeeds[category.id]?.length || 0) > 0 && (
+                  <span className="text-xs text-gray-500">Drag to reorder</span>
+                )}
               </div>
 
-              {(categorizedFeeds[category.id] || []).map(feed => (
+              {(categorizedFeeds[category.id] || []).map((feed) => (
                 <div
                   key={feed.url}
-                  className="bg-gray-700 p-2 rounded cursor-move hover:bg-gray-600 transition-colors"
+                  className="bg-[rgb(var(--color-surface))] p-3 rounded-lg cursor-move hover:bg-gray-700 transition-all duration-200 border border-[rgb(var(--color-border))] hover:border-[rgb(var(--color-border))]"
                   draggable
-                  onDragStart={(e) => handleDragStart(e, 'feed', feed.url, feed)}
+                  onDragStart={(e) =>
+                    handleDragStart(e, "feed", feed.url, feed)
+                  }
                 >
-                  <div className="text-sm text-white truncate" title={feed.url}>
+                  <div
+                    className="text-sm text-white font-medium truncate mb-1"
+                    title={feed.url}
+                  >
                     {feed.customTitle || feed.url}
                   </div>
-                  <div className="text-xs text-gray-400 truncate">
+                  <div className="text-xs text-[rgb(var(--color-textSecondary))] truncate">
                     {feed.url}
                   </div>
                 </div>
               ))}
 
-              {category.id === 'uncategorized' && (categorizedFeeds.uncategorized || []).map(feed => (
-                <div
-                  key={feed.url}
-                  className="bg-gray-700 p-2 rounded cursor-move hover:bg-gray-600 transition-colors border-l-4 border-yellow-500"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, 'feed', feed.url, feed)}
-                >
-                  <div className="text-sm text-white truncate" title={feed.url}>
-                    {feed.customTitle || feed.url}
+              {category.id === "uncategorized" &&
+                (categorizedFeeds.uncategorized || []).map((feed) => (
+                  <div
+                    key={feed.url}
+                    className="bg-[rgb(var(--color-surface))] p-3 rounded-lg cursor-move hover:bg-gray-700 transition-all duration-200 border-l-4 border-yellow-500 border-t border-r border-b border-[rgb(var(--color-border))]"
+                    draggable
+                    onDragStart={(e) =>
+                      handleDragStart(e, "feed", feed.url, feed)
+                    }
+                  >
+                    <div
+                      className="text-sm text-white font-medium truncate mb-1"
+                      title={feed.url}
+                    >
+                      {feed.customTitle || feed.url}
+                    </div>
+                    <div className="text-xs text-[rgb(var(--color-textSecondary))] truncate">
+                      {feed.url}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400 truncate">
-                    {feed.url}
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
-          </div>
+          </Card>
         ))}
 
         {/* Uncategorized feeds */}
         {(categorizedFeeds.uncategorized || []).length > 0 && (
-          <div
-            className={`bg-gray-800 rounded-lg p-4 border-2 border-dashed border-yellow-500 transition-all ${
-              dragState.dragOverCategory === 'uncategorized' ? 'ring-2 ring-[rgb(var(--color-accent))] bg-gray-700' : ''
+          <Card
+            className={`border-2 border-dashed border-yellow-500 transition-all ${
+              dragState.dragOverCategory === "uncategorized"
+                ? "ring-2 ring-blue-500 bg-blue-500/10"
+                : ""
             }`}
-            onDragOver={(e) => handleDragOver(e, 'uncategorized')}
+            onDragOver={(e) => handleDragOver(e, "uncategorized")}
             onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, 'uncategorized')}
+            onDrop={(e) => handleDrop(e, "uncategorized")}
+            elevation="sm"
           >
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="w-4 h-4 rounded-full bg-yellow-500" />
-              <h3 className="font-semibold text-white">Uncategorized</h3>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-5 h-5 rounded-full bg-yellow-500 shadow-sm" />
+              <h3 className="font-semibold text-white text-lg">
+                Uncategorized
+              </h3>
+              <Badge
+                variant="secondary"
+                className="bg-yellow-500/20 text-yellow-300 border-yellow-500"
+              >
+                needs organization
+              </Badge>
             </div>
 
-            <div className="space-y-2">
-              <div className="text-xs text-gray-500 mb-2">
-                {categorizedFeeds.uncategorized?.length || 0} feed(s)
-              </div>
+            <div className="space-y-3">
+              <Badge variant="secondary" className="text-xs">
+                {categorizedFeeds.uncategorized?.length || 0} feeds
+              </Badge>
 
-              {(categorizedFeeds.uncategorized || []).map(feed => (
+              {(categorizedFeeds.uncategorized || []).map((feed) => (
                 <div
                   key={feed.url}
-                  className="bg-gray-700 p-2 rounded cursor-move hover:bg-gray-600 transition-colors"
+                  className="bg-[rgb(var(--color-surface))] p-3 rounded-lg cursor-move hover:bg-gray-700 transition-all duration-200 border border-[rgb(var(--color-border))] hover:border-[rgb(var(--color-border))]"
                   draggable
-                  onDragStart={(e) => handleDragStart(e, 'feed', feed.url, feed)}
+                  onDragStart={(e) =>
+                    handleDragStart(e, "feed", feed.url, feed)
+                  }
                 >
-                  <div className="text-sm text-white truncate" title={feed.url}>
+                  <div
+                    className="text-sm text-white font-medium truncate mb-1"
+                    title={feed.url}
+                  >
                     {feed.customTitle || feed.url}
                   </div>
-                  <div className="text-xs text-gray-400 truncate">
+                  <div className="text-xs text-[rgb(var(--color-textSecondary))] truncate">
                     {feed.url}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         )}
       </div>
 
       {/* Instructions */}
-      <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-        <h4 className="font-semibold text-white mb-2">Instructions:</h4>
-        <ul className="text-sm text-gray-300 space-y-1">
-          <li>• Drag feeds between categories to organize them</li>
-          <li>• Drag categories to reorder them (custom categories only)</li>
-          <li>• Click the edit icon to rename custom categories</li>
-          <li>• Export/import categories to share configurations</li>
-          <li>• Default categories cannot be deleted or reordered</li>
-        </ul>
-      </div>
+      <Card className="mt-8" elevation="sm">
+        <div className="flex items-center mb-4">
+          <StatusIcons.Info className="w-5 h-5 mr-2 text-blue-500" />
+          <h4 className="font-semibold text-white">How to Use</h4>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-[rgb(var(--color-text))]">
+          <div className="space-y-2">
+            <div className="flex items-start space-x-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Drag feeds between categories to organize them</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>
+                Drag categories to reorder them (custom categories only)
+              </span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Click the edit icon to rename custom categories</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-start space-x-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Export/import categories to share configurations</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Default categories cannot be deleted or reordered</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <span className="text-blue-400 mt-1">•</span>
+              <span>Use color coding to visually distinguish categories</span>
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };

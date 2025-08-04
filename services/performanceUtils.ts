@@ -1,33 +1,527 @@
-// Performance utilities for debugging and optimization
+/**
+ * Performance utility functions for easy integration with existing components
+ * Implements requirements 7.1, 7.2, 7.3, 7.4
+ */
+
 import React from 'react';
-import { articleCache } from './articleCache';
+import { performanceMonitor } from './performanceMonitor';
 
-export interface PerformanceTimer {
-  start: () => void;
-  end: () => number;
-  reset: () => void;
+/**
+ * Performance decorator for React components
+ * Automatically tracks component render performance
+ */
+export function withPerformanceTracking<T extends React.ComponentType<any>>(
+  Component: T,
+  componentName?: string
+): T {
+  const WrappedComponent = (props: React.ComponentProps<T>) => {
+    const name = componentName || Component.displayName || Component.name || 'Unknown Component';
+
+    React.useEffect(() => {
+      const id = performanceMonitor.trackApplication('app-load', `Render: ${name}`);
+
+      // Complete tracking after render
+      const timeoutId = setTimeout(() => {
+        performanceMonitor.completeApplication(id, {
+          componentName: name,
+          propsCount: Object.keys(props).length
+        });
+      }, 0);
+
+      return () => clearTimeout(timeoutId);
+    }, []);
+
+    return React.createElement(Component, props);
+  };
+
+  WrappedComponent.displayName = `withPerformanceTracking(${name})`;
+  return WrappedComponent as T;
 }
 
-export interface PerformanceDebugger {
-  log: (message: string, data?: any) => void;
-  warn: (message: string, data?: any) => void;
-  error: (message: string, data?: any) => void;
-  group: (label: string) => void;
-  groupEnd: () => void;
-  time: (label: string) => void;
-  timeEnd: (label: string) => void;
-  measure: (name: string, startMark?: string, endMark?: string) => void;
+/**
+ * Hook for tracking component lifecycle performance
+ */
+export function usePerformanceTracking(componentName: string, dependencies?: React.DependencyList) {
+  const [renderCount, setRenderCount] = React.useState(0);
+  const mountTimeRef = React.useRef<string | null>(null);
+
+  // Track component mount
+  React.useEffect(() => {
+    const id = performanceMonitor.trackApplication('app-load', `Mount: ${componentName}`);
+    mountTimeRef.current = id;
+
+    return () => {
+      if (mountTimeRef.current) {
+        performanceMonitor.completeApplication(mountTimeRef.current, {
+          componentName,
+          totalRenders: renderCount
+        });
+      }
+    };
+  }, []);
+
+  // Track re-renders
+  React.useEffect(() => {
+    setRenderCount(prev => prev + 1);
+
+    if (renderCount > 0) { // Skip first render (mount)
+      const id = performanceMonitor.trackApplication('app-load', `Re-render: ${componentName}`);
+
+      setTimeout(() => {
+        performanceMonitor.completeApplication(id, {
+          componentName,
+          renderNumber: renderCount,
+          dependencyChange: true
+        });
+      }, 0);
+    }
+  }, dependencies);
+
+  return {
+    renderCount,
+    trackCustomEvent: (eventName: string, metadata?: Record<string, any>) => {
+      const id = performanceMonitor.trackApplication('app-load', `${componentName}: ${eventName}`);
+
+      setTimeout(() => {
+        performanceMonitor.completeApplication(id, {
+          componentName,
+          eventName,
+          ...metadata
+        });
+      }, 0);
+    }
+  };
 }
 
-export interface NetworkRequestBatch {
-  id: string;
-  urls: string[];
-  startTime: number;
-  endTime?: number;
-  status: 'pending' | 'complete' | 'error';
-  results: any[];
+/**
+ * Performance-aware fetch wrapper
+ * Automatically tracks network request performance
+ */
+export async function performanceFetch(
+  url: string,
+  options?: RequestInit,
+  metadata?: Record<string, any>
+): Promise<Response> {
+  const id = performanceMonitor.trackFeedLoading(url, {
+    cacheHit: false,
+    retryCount: 0,
+    ...metadata
+  });
+
+  try {
+    const response = await fetch(url, options);
+
+    performanceMonitor.completeFeedLoading(id, 0, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      size: response.headers.get('content-length') || 'unknown'
+    });
+
+    return response;
+  } catch (error) {
+    performanceMonitor.markFailed(
+      id,
+      error instanceof Error ? error.message : String(error),
+      { url, ...metadata }
+    );
+    throw error;
+  }
 }
 
+/**
+ * Track RSS feed parsing performance
+ */
+export async function trackFeedParsing<T>(
+  feedUrl: string,
+  parseFunction: () => Promise<T>,
+  options?: {
+    cacheHit?: boolean;
+    retryCount?: number;
+  }
+): Promise<T> {
+  const id = performanceMonitor.trackFeedLoading(feedUrl, options);
+
+  try {
+    const result = await parseFunction();
+
+    // Extract article count if result has articles
+    const articleCount = Array.isArray(result) ? result.length :
+      (result && typeof result === 'object' && 'articles' in result) ?
+        (result as any).articles?.length || 0 : 0;
+
+    performanceMonitor.completeFeedLoading(id, articleCount, {
+      resultType: typeof result,
+      hasArticles: articleCount > 0
+    });
+
+    return result;
+  } catch (error) {
+    performanceMonitor.markFailed(
+      id,
+      error instanceof Error ? error.message : String(error),
+      { feedUrl, ...options }
+    );
+    throw error;
+  }
+}
+
+/**
+ * Track pagination navigation performance
+ */
+export function trackPaginationNavigation(
+  fromPage: number,
+  toPage: number,
+  totalArticles: number,
+  navigationFunction: () => void | Promise<void>
+): Promise<void> {
+  const id = performanceMonitor.trackPagination(fromPage, toPage, totalArticles);
+
+  const executeNavigation = async () => {
+    try {
+      const renderStart = performance.now();
+      await navigationFunction();
+      const renderEnd = performance.now();
+
+      performanceMonitor.completePagination(id, renderEnd - renderStart);
+    } catch (error) {
+      performanceMonitor.markFailed(
+        id,
+        error instanceof Error ? error.message : String(error),
+        { fromPage, toPage, totalArticles }
+      );
+      throw error;
+    }
+  };
+
+  return executeNavigation();
+}
+
+/**
+ * Track search performance
+ */
+export async function trackSearchPerformance<T>(
+  searchTerm: string,
+  searchFunction: () => Promise<T>
+): Promise<T> {
+  const id = performanceMonitor.trackApplication('search', `Search: "${searchTerm}"`);
+
+  try {
+    const result = await searchFunction();
+
+    const resultCount = Array.isArray(result) ? result.length :
+      (result && typeof result === 'object' && 'length' in result) ?
+        (result as any).length : 0;
+
+    performanceMonitor.completeApplication(id, {
+      searchTerm,
+      resultCount,
+      searchTermLength: searchTerm.length
+    });
+
+    return result;
+  } catch (error) {
+    performanceMonitor.markFailed(
+      id,
+      error instanceof Error ? error.message : String(error),
+      { searchTerm }
+    );
+    throw error;
+  }
+}
+
+/**
+ * Track theme change performance
+ */
+export function trackThemeChange(
+  fromTheme: string,
+  toTheme: string,
+  changeFunction: () => void | Promise<void>
+): Promise<void> {
+  const id = performanceMonitor.trackApplication('theme-change', `Theme: ${fromTheme} → ${toTheme}`);
+
+  const executeChange = async () => {
+    try {
+      await changeFunction();
+
+      performanceMonitor.completeApplication(id, {
+        fromTheme,
+        toTheme,
+        themeChangeType: fromTheme === toTheme ? 'refresh' : 'change'
+      });
+    } catch (error) {
+      performanceMonitor.markFailed(
+        id,
+        error instanceof Error ? error.message : String(error),
+        { fromTheme, toTheme }
+      );
+      throw error;
+    }
+  };
+
+  return executeChange();
+}
+
+/**
+ * Performance logging utilities
+ */
+export const PerformanceLogger = {
+  /**
+   * Log slow operations (> threshold ms)
+   */
+  logSlowOperations: (thresholdMs: number = 1000) => {
+    const metrics = performanceMonitor.getAllMetrics();
+    const slowOperations = [
+      ...metrics.feeds.filter(m => (m.duration || 0) > thresholdMs),
+      ...metrics.pagination.filter(m => (m.duration || 0) > thresholdMs),
+      ...metrics.application.filter(m => (m.duration || 0) > thresholdMs)
+    ];
+
+    if (slowOperations.length > 0) {
+      console.group('🐌 Slow Operations (>' + thresholdMs + 'ms)');
+      slowOperations.forEach(op => {
+        console.warn(`${op.name}: ${op.duration?.toFixed(2)}ms`, op.metadata);
+      });
+      console.groupEnd();
+    }
+  },
+
+  /**
+   * Log failed operations
+   */
+  logFailedOperations: () => {
+    const metrics = performanceMonitor.getAllMetrics();
+    const failedOperations = [
+      ...metrics.feeds.filter(m => m.status === 'failed'),
+      ...metrics.pagination.filter(m => m.status === 'failed'),
+      ...metrics.application.filter(m => m.status === 'failed')
+    ];
+
+    if (failedOperations.length > 0) {
+      console.group('❌ Failed Operations');
+      failedOperations.forEach(op => {
+        console.error(`${op.name}: ${op.error}`, op.metadata);
+      });
+      console.groupEnd();
+    }
+  },
+
+  /**
+   * Log performance trends
+   */
+  logPerformanceTrends: () => {
+    const summary = performanceMonitor.getPerformanceSummary();
+
+    console.group('📈 Performance Trends');
+
+    if (summary.feeds.total > 0) {
+      console.log(`Feed loading trend: ${summary.feeds.averageLoadTime.toFixed(2)}ms avg, ${summary.feeds.cacheHitRate.toFixed(1)}% cache hit rate`);
+    }
+
+    if (summary.pagination.total > 0) {
+      console.log(`Pagination trend: ${summary.pagination.averageNavigationTime.toFixed(2)}ms avg navigation time`);
+    }
+
+    if (summary.application.memoryTrend.length > 0) {
+      const memoryTrend = summary.application.memoryTrend;
+      const memoryChange = memoryTrend[memoryTrend.length - 1] - memoryTrend[0];
+      console.log(`Memory trend: ${memoryChange > 0 ? '+' : ''}${memoryChange.toFixed(2)}MB over last ${memoryTrend.length} operations`);
+    }
+
+    console.groupEnd();
+  },
+
+  /**
+   * Export performance data for analysis
+   */
+  exportPerformanceData: () => {
+    const data = {
+      timestamp: new Date().toISOString(),
+      summary: performanceMonitor.getPerformanceSummary(),
+      metrics: performanceMonitor.getAllMetrics(),
+      systemInfo: {
+        userAgent: navigator.userAgent,
+        memory: (performance as any).memory ? {
+          used: (performance as any).memory.usedJSHeapSize,
+          total: (performance as any).memory.totalJSHeapSize,
+          limit: (performance as any).memory.jsHeapSizeLimit
+        } : null,
+        connection: (navigator as any).connection?.effectiveType || 'unknown',
+        hardwareConcurrency: navigator.hardwareConcurrency || 'unknown'
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `performance-data-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    console.log('📊 Performance data exported');
+  }
+};
+
+export const perfDebugger = {
+  log: (message: string, data?: any) => {
+    if (import.meta.env.DEV) {
+      console.log(`[PerfDebug] ${message}`, data);
+    }
+  },
+  time: (label: string) => {
+    if (import.meta.env.DEV) {
+      console.time(label);
+    }
+  },
+  timeEnd: (label: string) => {
+    if (import.meta.env.DEV) {
+      console.timeEnd(label);
+    }
+  }
+};
+
+/**
+ * Legacy compatibility exports for existing components
+ */
+// Legacy compatibility state
+let networkRequestCount = 0;
+let networkRequestBatches: any[] = [];
+let performanceSnapshots: PerformanceSnapshot[] = [];
+let isBackgroundedState = false;
+let backgroundedStartTime = 0;
+let backgroundMonitoringInterval: NodeJS.Timeout | null = null;
+
+export const performanceUtils = {
+  getMemoryUsage: () => {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      return {
+        used: memory.usedJSHeapSize / 1024 / 1024, // MB
+        total: memory.totalJSHeapSize / 1024 / 1024, // MB
+        limit: memory.jsHeapSizeLimit / 1024 / 1024 // MB
+      };
+    }
+    return null;
+  },
+
+  getPerformanceSummary: () => performanceMonitor.getPerformanceSummary(),
+
+  clearMetrics: () => performanceMonitor.clearMetrics(),
+
+  logSummary: () => performanceMonitor.logPerformanceSummary(),
+
+  exportData: () => PerformanceLogger.exportPerformanceData(),
+
+  // Network request tracking
+  trackNetworkRequest: () => {
+    networkRequestCount++;
+  },
+
+  getNetworkRequestCount: () => networkRequestCount,
+
+  resetNetworkRequestCount: () => {
+    networkRequestCount = 0;
+  },
+
+  createNetworkRequestBatch: (urls: string[]) => {
+    const batchId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const batch = {
+      id: batchId,
+      urls,
+      startTime: Date.now(),
+      endTime: undefined,
+      status: 'pending',
+      results: []
+    };
+    networkRequestBatches.push(batch);
+    return batchId;
+  },
+
+  completeNetworkRequestBatch: (batchId: string, results: any[], status: string) => {
+    const batch = networkRequestBatches.find((b: any) => b.id === batchId);
+    if (batch) {
+      batch.endTime = Date.now();
+      batch.status = status;
+      batch.results = results;
+    }
+  },
+
+  getNetworkRequestBatches: () => networkRequestBatches,
+
+  // Performance snapshots
+  getPerformanceSnapshots: () => performanceSnapshots,
+
+  clearPerformanceSnapshots: () => {
+    performanceSnapshots.length = 0;
+  },
+
+  // Background monitoring
+  isBackgrounded: () => isBackgroundedState,
+
+  getBackgroundedTime: () => {
+    if (isBackgroundedState && backgroundedStartTime > 0) {
+      return Date.now() - backgroundedStartTime;
+    }
+    return 0;
+  },
+
+  startBackgroundMonitoring: () => {
+    if (backgroundMonitoringInterval) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isBackgroundedState = true;
+        backgroundedStartTime = Date.now();
+      } else {
+        isBackgroundedState = false;
+        backgroundedStartTime = 0;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    backgroundMonitoringInterval = setInterval(() => {
+      const summary = performanceMonitor.getPerformanceSummary();
+      const memory = performanceUtils.getMemoryUsage();
+
+      const snapshot: PerformanceSnapshot = {
+        timestamp: Date.now(),
+        memory,
+        feeds: summary.feeds,
+        pagination: summary.pagination,
+        application: summary.application,
+        cacheStats: {
+          hitRate: summary.feeds.cacheHitRate / 100 // Convert percentage to decimal
+        },
+        networkRequests: networkRequestCount,
+        fps: 60, // Default FPS value
+        longTasks: 0, // Default long tasks count
+        layoutShifts: 0 // Default layout shifts count
+      };
+
+      performanceSnapshots.push(snapshot);
+
+      // Keep only last 50 snapshots
+      if (performanceSnapshots.length > 50) {
+        performanceSnapshots.shift();
+      }
+    }, 5000); // Every 5 seconds
+  },
+
+  stopBackgroundMonitoring: () => {
+    if (backgroundMonitoringInterval) {
+      clearInterval(backgroundMonitoringInterval);
+      backgroundMonitoringInterval = null;
+    }
+  }
+};
+
+/**
+ * Performance snapshot interface for compatibility
+ */
 export interface PerformanceSnapshot {
   timestamp: number;
   memory: {
@@ -35,476 +529,53 @@ export interface PerformanceSnapshot {
     total: number;
     limit: number;
   } | null;
-  fps: number;
-  networkRequests: number;
-  cacheStats: {
-    hits: number;
-    misses: number;
-    hitRate: number;
-    size: number;
-    evictions: number;
+  feeds: {
+    total: number;
+    successful: number;
+    failed: number;
+    averageLoadTime: number;
   };
+  pagination: {
+    total: number;
+    averageNavigationTime: number;
+  };
+  application: {
+    total: number;
+    averageLoadTime: number;
+  };
+  cacheStats: {
+    hitRate: number;
+  };
+  networkRequests: number;
+  fps: number;
   longTasks: number;
   layoutShifts: number;
-  resourceCount: number;
 }
 
-class PerformanceTimerImpl implements PerformanceTimer {
-  private startTime: number = 0;
-
-  start(): void {
-    this.startTime = performance.now();
-  }
-
-  end(): number {
-    if (this.startTime === 0) {
-      console.warn('Timer was not started');
-      return 0;
-    }
-    const duration = performance.now() - this.startTime;
-    this.startTime = 0;
-    return duration;
-  }
-
-  reset(): void {
-    this.startTime = 0;
-  }
-}
-
-class PerformanceDebuggerImpl implements PerformanceDebugger {
-  private enabled: boolean;
-
-  constructor(enabled: boolean = import.meta.env.DEV) {
-    this.enabled = enabled;
-  }
-
-  log(message: string, data?: any): void {
-    if (!this.enabled) return;
-    console.log(`[PERF] ${message}`, data || '');
-  }
-
-  warn(message: string, data?: any): void {
-    if (!this.enabled) return;
-    console.warn(`[PERF] ${message}`, data || '');
-  }
-
-  error(message: string, data?: any): void {
-    if (!this.enabled) return;
-    console.error(`[PERF] ${message}`, data || '');
-  }
-
-  group(label: string): void {
-    if (!this.enabled) return;
-    console.group(`[PERF] ${label}`);
-  }
-
-  groupEnd(): void {
-    if (!this.enabled) return;
-    console.groupEnd();
-  }
-
-  time(label: string): void {
-    if (!this.enabled) return;
-    console.time(`[PERF] ${label}`);
-  }
-
-  timeEnd(label: string): void {
-    if (!this.enabled) return;
-    console.timeEnd(`[PERF] ${label}`);
-  }
-
-  measure(name: string, startMark?: string, endMark?: string): void {
-    if (!this.enabled) return;
-
-    try {
-      if (startMark && endMark) {
-        performance.measure(name, startMark, endMark);
-      } else {
-        performance.measure(name);
-      }
-
-      const measures = performance.getEntriesByName(name, 'measure');
-      if (measures.length > 0) {
-        const measure = measures[measures.length - 1];
-        this.log(`Measure "${name}": ${measure.duration.toFixed(2)}ms`);
-      }
-    } catch (error) {
-      this.error(`Failed to measure "${name}"`, error);
-    }
-  }
-}
-
-// Singleton instances
-export const createTimer = (): PerformanceTimer => new PerformanceTimerImpl();
-export const perfDebugger = new PerformanceDebuggerImpl();
-
-// Background monitoring state
-let isBackgrounded = false;
-let backgroundedTime: number | null = null;
-let monitoringInterval: number | null = null;
-let performanceSnapshots: PerformanceSnapshot[] = [];
-let longTaskCount = 0;
-let layoutShiftCount = 0;
-let lastFrameTime = 0;
-let frameCount = 0;
-let currentFps = 0;
-let networkRequestBatches: NetworkRequestBatch[] = [];
-let networkRequestCount = 0;
-
-// Performance monitoring utilities
-export const performanceUtils = {
-  // Mark performance points
-  mark: (name: string): void => {
-    if (import.meta.env.DEV) {
-      performance.mark(name);
-    }
-  },
-
-  // Measure between marks
-  measureBetween: (name: string, startMark: string, endMark: string): number => {
-    if (!import.meta.env.DEV) return 0;
-
-    try {
-      performance.measure(name, startMark, endMark);
-      const measures = performance.getEntriesByName(name, 'measure');
-      return measures.length > 0 ? measures[measures.length - 1].duration : 0;
-    } catch {
-      return 0;
-    }
-  },
-
-  // Get current memory usage (Chrome only)
-  getMemoryUsage: (): { used: number; total: number; limit: number } | null => {
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
-      return {
-        used: Math.round(memory.usedJSHeapSize / (1024 * 1024)), // MB
-        total: Math.round(memory.totalJSHeapSize / (1024 * 1024)), // MB
-        limit: Math.round(memory.jsHeapSizeLimit / (1024 * 1024)) // MB
-      };
-    }
-    return null;
-  },
-
-  // Monitor long tasks (if supported)
-  observeLongTasks: (callback: (entries: PerformanceEntry[]) => void): PerformanceObserver | null => {
-    if (!import.meta.env.DEV) return null;
-
-    try {
-      const observer = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        longTaskCount += entries.length;
-        callback(entries);
-      });
-      observer.observe({ entryTypes: ['longtask'] });
-      return observer;
-    } catch {
-      return null;
-    }
-  },
-
-  // Monitor layout shifts (if supported)
-  observeLayoutShifts: (callback: (entries: PerformanceEntry[]) => void): PerformanceObserver | null => {
-    if (!import.meta.env.DEV) return null;
-
-    try {
-      const observer = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        layoutShiftCount += entries.length;
-        callback(entries);
-      });
-      observer.observe({ entryTypes: ['layout-shift'] });
-      return observer;
-    } catch {
-      return null;
-    }
-  },
-
-  // Get navigation timing
-  getNavigationTiming: (): PerformanceNavigationTiming | null => {
-    const entries = performance.getEntriesByType('navigation');
-    return entries.length > 0 ? entries[0] as PerformanceNavigationTiming : null;
-  },
-
-  // Clear performance entries
-  clearEntries: (): void => {
-    if (import.meta.env.DEV) {
-      performance.clearMarks();
-      performance.clearMeasures();
-    }
-  },
-
-  // Format duration for display
-  formatDuration: (duration: number): string => {
-    if (duration < 1) {
-      return `${(duration * 1000).toFixed(0)}μs`;
-    } else if (duration < 1000) {
-      return `${duration.toFixed(2)}ms`;
-    } else {
-      return `${(duration / 1000).toFixed(2)}s`;
-    }
-  },
-
-  // Format memory size for display
-  formatMemorySize: (bytes: number): string => {
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-
-    return `${size.toFixed(2)} ${units[unitIndex]}`;
-  },
-
-  // Check if the app is backgrounded
-  isBackgrounded: (): boolean => {
-    return isBackgrounded;
-  },
-
-  // Get time since app was backgrounded (in ms)
-  getBackgroundedTime: (): number => {
-    if (!isBackgrounded || !backgroundedTime) return 0;
-    return Date.now() - backgroundedTime;
-  },
-
-  // Start background monitoring
-  startBackgroundMonitoring: (): void => {
-    if (monitoringInterval !== null) return;
-
-    perfDebugger.log('Starting background performance monitoring');
-
-    // Setup visibility change listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Setup FPS monitoring
-    lastFrameTime = performance.now();
-    frameCount = 0;
-    requestAnimationFrame(updateFps);
-
-    // Setup performance observers
-    performanceUtils.observeLongTasks(() => {});
-    performanceUtils.observeLayoutShifts(() => {});
-
-    // Start periodic monitoring
-    monitoringInterval = window.setInterval(() => {
-      capturePerformanceSnapshot();
-    }, 10000); // Every 10 seconds
-  },
-
-  // Stop background monitoring
-  stopBackgroundMonitoring: (): void => {
-    if (monitoringInterval === null) return;
-
-    perfDebugger.log('Stopping background performance monitoring');
-
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
-    clearInterval(monitoringInterval);
-    monitoringInterval = null;
-    performanceSnapshots = [];
-  },
-
-  // Get performance snapshots
-  getPerformanceSnapshots: (): PerformanceSnapshot[] => {
-    return [...performanceSnapshots];
-  },
-
-  // Clear performance snapshots
-  clearPerformanceSnapshots: (): void => {
-    performanceSnapshots = [];
-  },
-
-  // Get current FPS
-  getCurrentFps: (): number => {
-    return currentFps;
-  },
-
-  // Create a network request batch
-  createNetworkRequestBatch: (urls: string[]): NetworkRequestBatch => {
-    const batch: NetworkRequestBatch = {
-      id: `batch-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      urls,
-      startTime: Date.now(),
-      status: 'pending',
-      results: []
-    };
-
-    networkRequestBatches.push(batch);
-    return batch;
-  },
-
-  // Complete a network request batch
-  completeNetworkRequestBatch: (batchId: string, results: any[], status: 'complete' | 'error' = 'complete'): void => {
-    const batchIndex = networkRequestBatches.findIndex(batch => batch.id === batchId);
-    if (batchIndex === -1) return;
-
-    networkRequestBatches[batchIndex].endTime = Date.now();
-    networkRequestBatches[batchIndex].status = status;
-    networkRequestBatches[batchIndex].results = results;
-
-    networkRequestCount += networkRequestBatches[batchIndex].urls.length;
-  },
-
-  // Get network request batches
-  getNetworkRequestBatches: (): NetworkRequestBatch[] => {
-    return [...networkRequestBatches];
-  },
-
-  // Track network request
-  trackNetworkRequest: (): void => {
-    networkRequestCount++;
-  },
-
-  // Get network request count
-  getNetworkRequestCount: (): number => {
-    return networkRequestCount;
-  },
-
-  // Reset network request count
-  resetNetworkRequestCount: (): void => {
-    networkRequestCount = 0;
-    networkRequestBatches = [];
-  },
-
-  // Perform cleanup when app is backgrounded
-  performBackgroundCleanup: (): void => {
-    if (!isBackgrounded) return;
-
-    perfDebugger.log('Performing background cleanup');
-
-    // Clean up article cache
-    articleCache.cleanup();
-
-    // Clear performance entries
-    performanceUtils.clearEntries();
-
-    // Abort any pending network requests
-    // This would require integration with a request manager
-  }
-};
-
-// Handle visibility change events
-function handleVisibilityChange(): void {
-  if (document.hidden) {
-    isBackgrounded = true;
-    backgroundedTime = Date.now();
-    perfDebugger.log('App backgrounded');
-
-    // Perform cleanup after a short delay
-    setTimeout(() => {
-      if (isBackgrounded) {
-        performanceUtils.performBackgroundCleanup();
-      }
-    }, 5000); // Wait 5 seconds before cleanup
-  } else {
-    isBackgrounded = false;
-
-    if (backgroundedTime) {
-      const backgroundDuration = Date.now() - backgroundedTime;
-      perfDebugger.log(`App foregrounded after ${performanceUtils.formatDuration(backgroundDuration)}`);
-    }
-
-    backgroundedTime = null;
-
-    // Capture a snapshot when returning to the app
-    capturePerformanceSnapshot();
-  }
-}
-
-// Update FPS counter
-function updateFps(): void {
-  const now = performance.now();
-  frameCount++;
-
-  // Update FPS every second
-  if (now - lastFrameTime >= 1000) {
-    currentFps = Math.round((frameCount * 1000) / (now - lastFrameTime));
-    frameCount = 0;
-    lastFrameTime = now;
-  }
-
-  requestAnimationFrame(updateFps);
-}
-
-// Capture a performance snapshot
-function capturePerformanceSnapshot(): void {
-  const cacheStats = articleCache.getStats();
-
-  const snapshot: PerformanceSnapshot = {
-    timestamp: Date.now(),
-    memory: performanceUtils.getMemoryUsage(),
-    fps: currentFps,
-    networkRequests: networkRequestCount,
-    cacheStats: {
-      hits: cacheStats.hits,
-      misses: cacheStats.misses,
-      hitRate: cacheStats.hitRate,
-      size: cacheStats.size,
-      evictions: cacheStats.evictions
-    },
-    longTasks: longTaskCount,
-    layoutShifts: layoutShiftCount,
-    resourceCount: performance.getEntriesByType('resource').length
+/**
+ * Legacy withPerformanceMonitoring alias
+ */
+export const withPerformanceMonitoring = withPerformanceTracking;
+
+/**
+ * Default export for compatibility
+ */
+export default performanceUtils;
+
+/**
+ * Development-only performance debugging commands
+ */
+if (import.meta.env.DEV) {
+  (window as any).perf = {
+    monitor: performanceMonitor,
+    logger: PerformanceLogger,
+    summary: () => performanceMonitor.logPerformanceSummary(),
+    clear: () => performanceMonitor.clearMetrics(),
+    export: () => PerformanceLogger.exportPerformanceData(),
+    slow: (threshold?: number) => PerformanceLogger.logSlowOperations(threshold),
+    failed: () => PerformanceLogger.logFailedOperations(),
+    trends: () => PerformanceLogger.logPerformanceTrends()
   };
 
-  performanceSnapshots.push(snapshot);
-
-  // Keep only the last 100 snapshots
-  if (performanceSnapshots.length > 100) {
-    performanceSnapshots = performanceSnapshots.slice(-100);
-  }
-
-  // Log snapshot in development
-  if (import.meta.env.DEV) {
-    perfDebugger.log('Performance snapshot captured', snapshot);
-  }
+  console.log('🔧 Performance debugging available via window.perf');
 }
-
-// Higher-order component for performance monitoring
-export const withPerformanceMonitoring = <P extends object>(
-  Component: React.ComponentType<P>,
-  componentName: string
-) => {
-  return React.forwardRef<any, P>((props, ref) => {
-    const timer = createTimer();
-
-    React.useEffect(() => {
-      perfDebugger.log(`${componentName} mounted`);
-      performanceUtils.mark(`${componentName}-mount-start`);
-
-      return () => {
-        perfDebugger.log(`${componentName} unmounted`);
-        performanceUtils.mark(`${componentName}-mount-end`);
-        const duration = performanceUtils.measureBetween(
-          `${componentName}-mount-duration`,
-          `${componentName}-mount-start`,
-          `${componentName}-mount-end`
-        );
-        if (duration > 0) {
-          perfDebugger.log(`${componentName} mount duration: ${performanceUtils.formatDuration(duration)}`);
-        }
-      };
-    }, []);
-
-    React.useLayoutEffect(() => {
-      timer.start();
-      return () => {
-        const renderTime = timer.end();
-        if (renderTime > 16) { // Warn if render takes longer than 16ms (60fps)
-          perfDebugger.warn(`${componentName} slow render: ${performanceUtils.formatDuration(renderTime)}`);
-        }
-      };
-    });
-
-    return React.createElement(Component, { ...props, ref } as any);
-  });
-};
-
-// Initialize background monitoring
-if (import.meta.env.DEV) {
-  performanceUtils.startBackgroundMonitoring();
-}
-
-export default performanceUtils;

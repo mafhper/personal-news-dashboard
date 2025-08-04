@@ -34,13 +34,18 @@ export const useFeedCategories = (): UseFeedCategoriesReturn => {
       name,
       color,
       description,
-      order: Math.max(...categories.map(c => c.order)) + 1,
+      order: 0, // Will be updated in the setter function
       isDefault: false,
     };
 
-    setCategories(prev => [...prev, newCategory]);
+    setCategories(prev => {
+      const maxOrder = Math.max(...prev.map(c => c.order));
+      const categoryWithOrder = { ...newCategory, order: maxOrder + 1 };
+      return [...prev, categoryWithOrder];
+    });
+
     return newCategory;
-  }, [categories, setCategories]);
+  }, [setCategories]);
 
   const updateCategory = useCallback((id: string, updates: Partial<FeedCategory>) => {
     setCategories(prev => prev.map(category =>
@@ -49,13 +54,14 @@ export const useFeedCategories = (): UseFeedCategoriesReturn => {
   }, [setCategories]);
 
   const deleteCategory = useCallback((id: string) => {
-    const category = categories.find(c => c.id === id);
-    if (category?.isDefault) {
-      throw new Error('Cannot delete default categories');
-    }
-
-    setCategories(prev => prev.filter(category => category.id !== id));
-  }, [categories, setCategories]);
+    setCategories(prev => {
+      const category = prev.find(c => c.id === id);
+      if (category?.isDefault) {
+        throw new Error('Cannot delete default categories');
+      }
+      return prev.filter(category => category.id !== id);
+    });
+  }, [setCategories]);
 
   const reorderCategories = useCallback((categoryIds: string[]) => {
     setCategories(prev => {

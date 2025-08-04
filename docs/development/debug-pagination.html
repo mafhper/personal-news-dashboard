@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Debug Pagination</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .pagination {
+        margin: 20px 0;
+      }
+      .pagination button {
+        margin: 0 5px;
+        padding: 8px 12px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .pagination button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      .pagination button:hover:not(:disabled) {
+        background: #0056b3;
+      }
+      .current-page {
+        font-weight: bold;
+        margin: 0 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Debug Pagination Test</h1>
+
+    <div id="content">
+      <p>Current Page: <span id="currentPage">1</span></p>
+      <p>Total Pages: <span id="totalPages">5</span></p>
+
+      <div class="pagination">
+        <button id="prevBtn" onclick="changePage(-1)">← Previous</button>
+        <span class="current-page"
+          >Page <span id="pageDisplay">1</span> of
+          <span id="totalDisplay">5</span></span
+        >
+        <button id="nextBtn" onclick="changePage(1)">Next →</button>
+      </div>
+
+      <div id="articles">
+        <p>Articles for page 1 would be shown here...</p>
+      </div>
+    </div>
+
+    <script>
+      let currentPage = 0; // 0-based like in the app
+      let totalPages = 5;
+
+      function updateDisplay() {
+        document.getElementById("currentPage").textContent = currentPage;
+        document.getElementById("pageDisplay").textContent = currentPage + 1;
+        document.getElementById("totalDisplay").textContent = totalPages;
+
+        // Update button states
+        document.getElementById("prevBtn").disabled = currentPage === 0;
+        document.getElementById("nextBtn").disabled =
+          currentPage === totalPages - 1;
+
+        // Update articles display
+        document.getElementById("articles").innerHTML = `<p>Articles for page ${
+          currentPage + 1
+        } would be shown here...</p>`;
+
+        console.log("Page changed to:", currentPage);
+      }
+
+      function changePage(direction) {
+        console.log("changePage called with direction:", direction);
+        console.log("Current page before change:", currentPage);
+
+        if (direction === -1 && currentPage > 0) {
+          currentPage--;
+          console.log("Going to previous page:", currentPage);
+        } else if (direction === 1 && currentPage < totalPages - 1) {
+          currentPage++;
+          console.log("Going to next page:", currentPage);
+        }
+
+        updateDisplay();
+      }
+
+      // Initialize display
+      updateDisplay();
+    </script>
+  </body>
+</html>

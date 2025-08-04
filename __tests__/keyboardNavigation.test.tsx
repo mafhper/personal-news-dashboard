@@ -1,43 +1,132 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { vi } from 'vitest';
-import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
-import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
-import App from '../App';
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
+import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
+import { KeyboardShortcutsModal } from "../components/KeyboardShortcutsModal";
+import App from "../App";
 
 // Mock the RSS parser and other services
-vi.mock('../services/rssParser', () => ({
+vi.mock("../services/rssParser", () => ({
   parseRssUrl: vi.fn().mockResolvedValue({
     articles: [],
-    title: 'Test Feed'
-  })
+    title: "Test Feed",
+  }),
 }));
 
-vi.mock('../services/performanceUtils', () => ({
+vi.mock("../services/performanceUtils", () => ({
   performanceUtils: {
     mark: vi.fn(),
     measureBetween: vi.fn(),
     getMemoryUsage: vi.fn().mockReturnValue({
-      usedJSHeapSize: 1000000,
-      totalJSHeapSize: 2000000,
-      jsHeapSizeLimit: 4000000
-    })
-  }
+      used: 1,
+      total: 2,
+      limit: 4,
+    }),
+    getPerformanceSummary: vi.fn().mockReturnValue({
+      feeds: {
+        total: 0,
+        successful: 0,
+        failed: 0,
+        averageLoadTime: 0,
+        cacheHitRate: 0,
+      },
+      pagination: { total: 0, averageNavigationTime: 0 },
+      application: { total: 0, averageLoadTime: 0, memoryTrend: [] },
+    }),
+    clearMetrics: vi.fn(),
+    logSummary: vi.fn(),
+    exportData: vi.fn(),
+    trackNetworkRequest: vi.fn(),
+    getNetworkRequestCount: vi.fn().mockReturnValue(0),
+    resetNetworkRequestCount: vi.fn(),
+    createNetworkRequestBatch: vi.fn().mockReturnValue("batch-id"),
+    completeNetworkRequestBatch: vi.fn(),
+    getNetworkRequestBatches: vi.fn().mockReturnValue([]),
+    getPerformanceSnapshots: vi.fn().mockReturnValue([]),
+    clearPerformanceSnapshots: vi.fn(),
+    isBackgrounded: vi.fn().mockReturnValue(false),
+    getBackgroundedTime: vi.fn().mockReturnValue(0),
+    startBackgroundMonitoring: vi.fn(),
+    stopBackgroundMonitoring: vi.fn(),
+  },
+  withPerformanceTracking: vi.fn((Component) => Component),
+  withPerformanceMonitoring: vi.fn((Component) => Component),
+  usePerformanceTracking: vi.fn().mockReturnValue({
+    renderCount: 1,
+    trackCustomEvent: vi.fn(),
+  }),
+  performanceFetch: vi.fn().mockImplementation((url) => fetch(url)),
+  trackFeedParsing: vi
+    .fn()
+    .mockImplementation((url, parseFunction) => parseFunction()),
+  trackPaginationNavigation: vi
+    .fn()
+    .mockImplementation((from, to, total, navFunction) => navFunction()),
+  trackSearchPerformance: vi
+    .fn()
+    .mockImplementation((term, searchFunction) => searchFunction()),
+  trackThemeChange: vi
+    .fn()
+    .mockImplementation((from, to, changeFunction) => changeFunction()),
+  PerformanceLogger: {
+    logSlowOperations: vi.fn(),
+    logFailedOperations: vi.fn(),
+    logPerformanceTrends: vi.fn(),
+    exportPerformanceData: vi.fn(),
+  },
+  perfDebugger: {
+    log: vi.fn(),
+    time: vi.fn(),
+    timeEnd: vi.fn(),
+  },
+  default: {
+    getMemoryUsage: vi.fn().mockReturnValue({
+      used: 1,
+      total: 2,
+      limit: 4,
+    }),
+    getPerformanceSummary: vi.fn().mockReturnValue({
+      feeds: {
+        total: 0,
+        successful: 0,
+        failed: 0,
+        averageLoadTime: 0,
+        cacheHitRate: 0,
+      },
+      pagination: { total: 0, averageNavigationTime: 0 },
+      application: { total: 0, averageLoadTime: 0, memoryTrend: [] },
+    }),
+    clearMetrics: vi.fn(),
+    logSummary: vi.fn(),
+    exportData: vi.fn(),
+    trackNetworkRequest: vi.fn(),
+    getNetworkRequestCount: vi.fn().mockReturnValue(0),
+    resetNetworkRequestCount: vi.fn(),
+    createNetworkRequestBatch: vi.fn().mockReturnValue("batch-id"),
+    completeNetworkRequestBatch: vi.fn(),
+    getNetworkRequestBatches: vi.fn().mockReturnValue([]),
+    getPerformanceSnapshots: vi.fn().mockReturnValue([]),
+    clearPerformanceSnapshots: vi.fn(),
+    isBackgrounded: vi.fn().mockReturnValue(false),
+    getBackgroundedTime: vi.fn().mockReturnValue(0),
+    startBackgroundMonitoring: vi.fn(),
+    stopBackgroundMonitoring: vi.fn(),
+  },
 }));
 
-describe('Keyboard Navigation Tests', () => {
-  describe('useKeyboardNavigation Hook', () => {
-    const TestComponent: React.FC<{ shortcuts?: any[]; enableArrowNavigation?: boolean }> = ({
-      shortcuts = [],
-      enableArrowNavigation = false
-    }) => {
+describe("Keyboard Navigation Tests", () => {
+  describe("useKeyboardNavigation Hook", () => {
+    const TestComponent: React.FC<{
+      shortcuts?: any[];
+      enableArrowNavigation?: boolean;
+    }> = ({ shortcuts = [], enableArrowNavigation = false }) => {
       const mockOnArrowNavigation = vi.fn();
 
       useKeyboardNavigation({
         shortcuts,
         enableArrowNavigation,
-        onArrowNavigation: mockOnArrowNavigation
+        onArrowNavigation: mockOnArrowNavigation,
       });
 
       return (
@@ -49,73 +138,73 @@ describe('Keyboard Navigation Tests', () => {
       );
     };
 
-    it('should execute keyboard shortcuts', async () => {
+    it("should execute keyboard shortcuts", async () => {
       const user = userEvent.setup();
       const mockAction = vi.fn();
 
       const shortcuts = [
         {
-          key: 'k',
+          key: "k",
           ctrlKey: true,
           action: mockAction,
-          description: 'Test shortcut'
-        }
+          description: "Test shortcut",
+        },
       ];
 
       render(<TestComponent shortcuts={shortcuts} />);
 
-      await user.keyboard('{Control>}k{/Control}');
+      await user.keyboard("{Control>}k{/Control}");
       expect(mockAction).toHaveBeenCalled();
     });
 
-    it('should handle multiple modifier keys', async () => {
+    it("should handle multiple modifier keys", async () => {
       const user = userEvent.setup();
       const mockAction = vi.fn();
 
       const shortcuts = [
         {
-          key: 's',
+          key: "s",
           ctrlKey: true,
           shiftKey: true,
           action: mockAction,
-          description: 'Test shortcut with multiple modifiers'
-        }
+          description: "Test shortcut with multiple modifiers",
+        },
       ];
 
       render(<TestComponent shortcuts={shortcuts} />);
 
-      await user.keyboard('{Control>}{Shift>}s{/Shift}{/Control}');
+      await user.keyboard("{Control>}{Shift>}s{/Shift}{/Control}");
       expect(mockAction).toHaveBeenCalled();
     });
 
-    it('should not execute shortcuts without proper modifiers', async () => {
+    it("should not execute shortcuts without proper modifiers", async () => {
       const user = userEvent.setup();
       const mockAction = vi.fn();
 
       const shortcuts = [
         {
-          key: 'k',
+          key: "k",
           ctrlKey: true,
           action: mockAction,
-          description: 'Test shortcut'
-        }
+          description: "Test shortcut",
+        },
       ];
 
       render(<TestComponent shortcuts={shortcuts} />);
 
       // Press 'k' without Ctrl
-      await user.keyboard('k');
+      await user.keyboard("k");
       expect(mockAction).not.toHaveBeenCalled();
     });
 
-    it('should handle arrow navigation when enabled', async () => {
+    it("should handle arrow navigation when enabled", async () => {
       const user = userEvent.setup();
       const mockOnArrowNavigation = vi.fn();
 
       const TestArrowComponent: React.FC = () => {
         useKeyboardNavigation({
           enableArrowNavigation: true,
-          onArrowNavigation: mockOnArrowNavigation
+          onArrowNavigation: mockOnArrowNavigation,
         });
 
         return <div data-testid="arrow-container">Test</div>;
@@ -123,60 +212,60 @@ describe('Keyboard Navigation Tests', () => {
 
       render(<TestArrowComponent />);
 
-      await user.keyboard('{ArrowUp}');
-      expect(mockOnArrowNavigation).toHaveBeenCalledWith('up');
+      await user.keyboard("{ArrowUp}");
+      expect(mockOnArrowNavigation).toHaveBeenCalledWith("up");
 
-      await user.keyboard('{ArrowDown}');
-      expect(mockOnArrowNavigation).toHaveBeenCalledWith('down');
+      await user.keyboard("{ArrowDown}");
+      expect(mockOnArrowNavigation).toHaveBeenCalledWith("down");
 
-      await user.keyboard('{ArrowLeft}');
-      expect(mockOnArrowNavigation).toHaveBeenCalledWith('left');
+      await user.keyboard("{ArrowLeft}");
+      expect(mockOnArrowNavigation).toHaveBeenCalledWith("left");
 
-      await user.keyboard('{ArrowRight}');
-      expect(mockOnArrowNavigation).toHaveBeenCalledWith('right');
+      await user.keyboard("{ArrowRight}");
+      expect(mockOnArrowNavigation).toHaveBeenCalledWith("right");
     });
   });
 
-  describe('KeyboardShortcutsModal Component', () => {
-    it('should render keyboard shortcuts help', () => {
+  describe("KeyboardShortcutsModal Component", () => {
+    it("should render keyboard shortcuts help", () => {
       render(<KeyboardShortcutsModal isOpen={true} onClose={() => {}} />);
 
-      expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
-      expect(screen.getByText('Navigation')).toBeInTheDocument();
-      expect(screen.getByText('Articles')).toBeInTheDocument();
-      expect(screen.getByText('General')).toBeInTheDocument();
-      expect(screen.getByText('Accessibility')).toBeInTheDocument();
+      expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument();
+      expect(screen.getByText("Navigation")).toBeInTheDocument();
+      expect(screen.getByText("Articles")).toBeInTheDocument();
+      expect(screen.getByText("General")).toBeInTheDocument();
+      expect(screen.getByText("Accessibility")).toBeInTheDocument();
     });
 
-    it('should display shortcut keys and descriptions', () => {
+    it("should display shortcut keys and descriptions", () => {
       render(<KeyboardShortcutsModal isOpen={true} onClose={() => {}} />);
 
-      expect(screen.getByText('Open search')).toBeInTheDocument();
-      expect(screen.getByText('Ctrl + K')).toBeInTheDocument();
-      expect(screen.getByText('Refresh articles')).toBeInTheDocument();
-      expect(screen.getByText('Ctrl + R')).toBeInTheDocument();
+      expect(screen.getByText("Open search")).toBeInTheDocument();
+      expect(screen.getByText("Ctrl + K")).toBeInTheDocument();
+      expect(screen.getByText("Refresh articles")).toBeInTheDocument();
+      expect(screen.getByText("Ctrl + R")).toBeInTheDocument();
     });
 
-    it('should close when close button is clicked', async () => {
+    it("should close when close button is clicked", async () => {
       const user = userEvent.setup();
       const onClose = vi.fn();
 
       render(<KeyboardShortcutsModal isOpen={true} onClose={onClose} />);
 
-      const closeButton = screen.getByText('Close');
+      const closeButton = screen.getByText("Close");
       await user.click(closeButton);
 
       expect(onClose).toHaveBeenCalled();
     });
 
-    it('should not render when closed', () => {
+    it("should not render when closed", () => {
       render(<KeyboardShortcutsModal isOpen={false} onClose={() => {}} />);
 
-      expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument();
+      expect(screen.queryByText("Keyboard Shortcuts")).not.toBeInTheDocument();
     });
   });
 
-  describe('App Integration Tests', () => {
+  describe("App Integration Tests", () => {
     beforeEach(() => {
       // Mock localStorage
       const localStorageMock = {
@@ -185,147 +274,171 @@ describe('Keyboard Navigation Tests', () => {
         removeItem: vi.fn(),
         clear: vi.fn(),
       };
-      Object.defineProperty(window, 'localStorage', {
-        value: localStorageMock
+      Object.defineProperty(window, "localStorage", {
+        value: localStorageMock,
       });
     });
 
-    it('should open search with Ctrl+K', async () => {
+    it("should open search with Ctrl+K", async () => {
       const user = userEvent.setup();
       render(<App />);
 
       // Wait for app to load
       await waitFor(() => {
-        expect(screen.getByText('MyFeed')).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", {
+            name: /Filter articles by All category/,
+          })
+        ).toBeInTheDocument();
       });
 
-      await user.keyboard('{Control>}k{/Control}');
+      // Simulate scroll to make SearchBar visible
+      Object.defineProperty(window, "scrollY", { value: 20, writable: true });
+      window.dispatchEvent(new Event("scroll"));
+
+      await user.keyboard("{Control>}k{/Control}");
 
       // Check if search input is focused
       await waitFor(() => {
-        const searchInput = screen.getByPlaceholderText(/Search articles/i);
+        const searchInput = screen.getByPlaceholderText(
+          /Buscar artigos\.\.\. \(Ctrl\+K\)/i
+        );
         expect(searchInput).toHaveFocus();
       });
     });
 
-    it('should open keyboard shortcuts with Ctrl+H', async () => {
+    it("should open keyboard shortcuts with Ctrl+H", async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.keyboard('{Control>}h{/Control}');
+      await user.keyboard("{Control>}h{/Control}");
 
       await waitFor(() => {
-        expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
+        expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument();
       });
     });
 
-    it('should open keyboard shortcuts with ?', async () => {
+    it("should open keyboard shortcuts with ?", async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.keyboard('?');
+      await user.keyboard("?");
 
       await waitFor(() => {
-        expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
+        expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument();
       });
     });
 
-    it('should open settings with Ctrl+S', async () => {
+    it("should open settings with Ctrl+S", async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.keyboard('{Control>}s{/Control}');
+      await user.keyboard("{Control>}s{/Control}");
 
       await waitFor(() => {
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText("Configurações")).toBeInTheDocument();
       });
     });
 
-    it('should open feed manager with Ctrl+M', async () => {
+    it("should open feed manager with Ctrl+M", async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.keyboard('{Control>}m{/Control}');
+      await user.keyboard("{Control>}m{/Control}");
 
       await waitFor(() => {
-        expect(screen.getByText('Manage Feeds')).toBeInTheDocument();
+        expect(screen.getByText("Manage Feeds")).toBeInTheDocument();
       });
     });
 
-    it('should navigate categories with number keys', async () => {
+    it("should navigate categories with number keys", async () => {
       const user = userEvent.setup();
       render(<App />);
 
       // Wait for component to load
       await waitFor(() => {
-        expect(screen.getByText('All')).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", {
+            name: /Filter articles by All category/,
+          })
+        ).toBeInTheDocument();
       });
 
       // Press '2' to select Tech category
-      await user.keyboard('2');
+      await user.keyboard("2");
 
       await waitFor(() => {
-        const techButton = screen.getByRole('button', { name: /Filter articles by Tech category/ });
-        expect(techButton).toHaveAttribute('aria-current', 'page');
+        const techButton = screen.getByRole("button", {
+          name: /Filter articles by Tech category/,
+        });
+        expect(techButton).toHaveAttribute("aria-current", "page");
       });
     });
 
-    it('should support Enter and Space for interactive elements', async () => {
+    it("should support Enter and Space for interactive elements", async () => {
       const user = userEvent.setup();
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByText('All')).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", {
+            name: /Filter articles by All category/,
+          })
+        ).toBeInTheDocument();
       });
 
-      const settingsButton = screen.getByLabelText('Open settings');
+      const settingsButton = screen.getByLabelText("Abrir configurações");
       settingsButton.focus();
 
       // Test Enter key
-      await user.keyboard('{Enter}');
+      await user.keyboard("{Enter}");
       await waitFor(() => {
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText("Configurações")).toBeInTheDocument();
       });
 
       // Close modal
-      const closeButton = screen.getByText('Close');
+      const closeButton = screen.getByText("Fechar");
       await user.click(closeButton);
 
       // Test Space key
       settingsButton.focus();
-      await user.keyboard(' ');
+      await user.keyboard(" ");
       await waitFor(() => {
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText("Configurações")).toBeInTheDocument();
       });
     });
 
-    it('should close modals with Escape key', async () => {
+    it("should close modals with Escape key", async () => {
       const user = userEvent.setup();
       render(<App />);
 
       // Open settings modal
-      await user.keyboard('{Control>}s{/Control}');
+      await user.keyboard("{Control>}s{/Control}");
 
       await waitFor(() => {
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText("Configurações")).toBeInTheDocument();
       });
 
       // Close with Escape
-      await user.keyboard('{Escape}');
+      await user.keyboard("{Escape}");
 
       await waitFor(() => {
-        expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+        expect(screen.queryByText("Configurações")).not.toBeInTheDocument();
       });
     });
   });
 
-  describe('Focus Management Integration', () => {
-    it('should maintain proper focus order when navigating with Tab', async () => {
+  describe("Focus Management Integration", () => {
+    it("should maintain proper focus order when navigating with Tab", async () => {
       const user = userEvent.setup();
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByText('MyFeed')).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", {
+            name: /Filter articles by All category/,
+          })
+        ).toBeInTheDocument();
       });
 
       // Start tabbing through elements
@@ -337,12 +450,16 @@ describe('Keyboard Navigation Tests', () => {
       expect(firstFocusable?.tagName.toLowerCase()).toMatch(/button|input|a/);
     });
 
-    it('should support Shift+Tab for backward navigation', async () => {
+    it("should support Shift+Tab for backward navigation", async () => {
       const user = userEvent.setup();
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByText('MyFeed')).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", {
+            name: /Filter articles by All category/,
+          })
+        ).toBeInTheDocument();
       });
 
       // Tab forward a few times

@@ -4,12 +4,33 @@
   "private": true,
   "type": "module",
   "description": "A personal browser homepage that aggregates RSS feeds, displays the date, time, and weather. All data is stored locally.",
+  "homepage": "https://github.com/mafhper/personal-news-dashboard#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mafhper/personal-news-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mafhper/personal-news-dashboard/issues"
+  },
+  "author": "mafhper",
+  "license": "MIT",
+  "keywords": [
+    "rss",
+    "news",
+    "dashboard",
+    "homepage",
+    "react",
+    "typescript",
+    "tailwindcss",
+    "pwa"
+  ],
   "scripts": {
     "start": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.11",
@@ -25,12 +46,19 @@
     "jsdom": "^26.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vite": "^7.0.0",
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.2.0",
+    "lucide-react": "^0.536.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "xmldom": "^0.6.0",
+    "zod": "^4.0.10"
   }
 }

@@ -1,7 +1,15 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Modal } from './Modal';
-import { LazyImage } from './LazyImage';
-import { useFavorites, favoriteToArticle } from '../hooks/useFavorites';
+import React, { useState, useMemo, useCallback } from "react";
+import { Modal } from "./Modal";
+import { LazyImage } from "./LazyImage";
+import { useFavorites, favoriteToArticle } from "../hooks/useFavorites";
+import { useNotificationReplacements } from "../hooks/useNotificationReplacements";
+import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Select } from "./ui/Select";
+import { Badge } from "./ui/Badge";
+import { IconButton } from "./ui/IconButton";
+import { ActionIcons, StatusIcons } from "./icons";
 // import type { Article } from '../types';
 
 interface FavoritesModalProps {
@@ -9,37 +17,10 @@ interface FavoritesModalProps {
   onClose: () => void;
 }
 
-const HeartIcon: React.FC<{ filled?: boolean }> = ({ filled = false }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={filled ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-  </svg>
-);
-
-const DownloadIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
-
-const UploadIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-  </svg>
-);
-
-const TrashIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
-
-const SearchIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-  </svg>
-);
-
-export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose }) => {
+export const FavoritesModal: React.FC<FavoritesModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const {
     favorites,
     removeFromFavorites,
@@ -47,31 +28,34 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose 
     exportFavorites,
     importFavorites,
     getFavoritesByCategory,
-    getFavoritesBySource
+    getFavoritesBySource,
   } = useFavorites();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedSource, setSelectedSource] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'recent' | 'title' | 'source'>('recent');
+  // Hook para notificações integradas
+  const { alertSuccess } = useNotificationReplacements();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedSource, setSelectedSource] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"recent" | "title" | "source">("recent");
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   // Get unique categories and sources from favorites
   const availableCategories = useMemo(() => {
     const categories = new Set<string>();
-    favorites.forEach(fav => {
-      fav.categories?.forEach(cat => categories.add(cat));
+    favorites.forEach((fav) => {
+      fav.categories?.forEach((cat) => categories.add(cat));
     });
-    return ['All', ...Array.from(categories).sort()];
+    return ["All", ...Array.from(categories).sort()];
   }, [favorites]);
 
   const availableSources = useMemo(() => {
     const sources = new Set<string>();
-    favorites.forEach(fav => {
+    favorites.forEach((fav) => {
       sources.add(fav.sourceTitle);
       if (fav.author) sources.add(fav.author);
     });
-    return ['All', ...Array.from(sources).sort()];
+    return ["All", ...Array.from(sources).sort()];
   }, [favorites]);
 
   // Filter and sort favorites
@@ -79,79 +63,99 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose 
     let filtered = favorites;
 
     // Apply category filter
-    if (selectedCategory !== 'All') {
+    if (selectedCategory !== "All") {
       filtered = getFavoritesByCategory(selectedCategory);
     }
 
     // Apply source filter
-    if (selectedSource && selectedSource !== 'All') {
+    if (selectedSource && selectedSource !== "All") {
       filtered = getFavoritesBySource(selectedSource);
     }
 
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(fav =>
-        fav.title.toLowerCase().includes(query) ||
-        fav.sourceTitle.toLowerCase().includes(query) ||
-        fav.author?.toLowerCase().includes(query) ||
-        fav.description?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (fav) =>
+          fav.title.toLowerCase().includes(query) ||
+          fav.sourceTitle.toLowerCase().includes(query) ||
+          fav.author?.toLowerCase().includes(query) ||
+          fav.description?.toLowerCase().includes(query)
       );
     }
 
     // Sort results
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
-        case 'title':
+        case "title":
           return a.title.localeCompare(b.title);
-        case 'source':
+        case "source":
           return a.sourceTitle.localeCompare(b.sourceTitle);
-        case 'recent':
+        case "recent":
         default:
-          return new Date(b.favoritedAt).getTime() - new Date(a.favoritedAt).getTime();
+          return (
+            new Date(b.favoritedAt).getTime() -
+            new Date(a.favoritedAt).getTime()
+          );
       }
     });
 
     return sorted;
-  }, [favorites, selectedCategory, selectedSource, searchQuery, sortBy, getFavoritesByCategory, getFavoritesBySource]);
+  }, [
+    favorites,
+    selectedCategory,
+    selectedSource,
+    searchQuery,
+    sortBy,
+    getFavoritesByCategory,
+    getFavoritesBySource,
+  ]);
 
   const handleExport = useCallback(() => {
     const data = exportFavorites();
-    const blob = new Blob([data], { type: 'application/json' });
+    const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `favorites-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `favorites-${new Date().toISOString().split("T")[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [exportFavorites]);
 
-  const handleImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImport = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      const success = importFavorites(content);
-      if (success) {
-        alert('Favorites imported successfully!');
-      } else {
-        alert('Failed to import favorites. Please check the file format.');
-      }
-    };
-    reader.readAsText(file);
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const content = e.target?.result as string;
+        const success = importFavorites(content);
+        if (success) {
+          await alertSuccess("Favorites imported successfully!");
+        } else {
+          await alertSuccess(
+            "Failed to import favorites. Please check the file format."
+          );
+        }
+      };
+      reader.readAsText(file);
 
-    // Reset the input
-    event.target.value = '';
-  }, [importFavorites]);
+      // Reset the input
+      event.target.value = "";
+    },
+    [importFavorites]
+  );
 
-  const handleRemoveFavorite = useCallback((favorite: any) => {
-    const article = favoriteToArticle(favorite);
-    removeFromFavorites(article);
-  }, [removeFromFavorites]);
+  const handleRemoveFavorite = useCallback(
+    (favorite: any) => {
+      const article = favoriteToArticle(favorite);
+      removeFromFavorites(article);
+    },
+    [removeFromFavorites]
+  );
 
   const handleClearAll = useCallback(() => {
     clearAllFavorites();
@@ -176,29 +180,32 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose 
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <Card
+        className="max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        elevation="lg"
+      >
         {/* Header */}
         <div className="border-b border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
             <div className="flex items-center space-x-3">
-              <HeartIcon filled />
+              <StatusIcons.Success className="w-6 h-6 text-red-500" />
               <h2 className="text-2xl font-bold text-white">My Favorites</h2>
-              <span className="bg-[rgb(var(--color-accent))] text-white px-2 py-1 rounded-full text-sm font-medium">
-                {favorites.length}
-              </span>
+              <Badge variant="primary">{favorites.length} articles</Badge>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
                 onClick={handleExport}
-                className="flex items-center space-x-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors text-sm"
-                title="Export favorites"
+                variant="secondary"
+                size="sm"
+                icon={<ActionIcons.Export />}
               >
-                <DownloadIcon />
-                <span>Export</span>
-              </button>
-              <label className="flex items-center space-x-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors text-sm cursor-pointer">
-                <UploadIcon />
-                <span>Import</span>
+                Export
+              </Button>
+              <label className="cursor-pointer">
+                <span className="inline-flex items-center justify-center rounded-lg border font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary))] focus:ring-offset-2 bg-[rgb(var(--color-surface))] hover:bg-[rgb(var(--color-surface))]/80 text-[rgb(var(--color-text))] border-[rgb(var(--color-border))] h-8 px-3 text-sm gap-1.5">
+                  <ActionIcons.Import />
+                  Import
+                </span>
                 <input
                   type="file"
                   accept=".json"
@@ -206,97 +213,101 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose 
                   className="hidden"
                 />
               </label>
-              <button
+              <Button
                 onClick={() => setShowConfirmClear(true)}
-                className="flex items-center space-x-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-sm"
-                title="Clear all favorites"
+                variant="danger"
+                size="sm"
+                icon={<ActionIcons.Delete />}
                 disabled={favorites.length === 0}
               >
-                <TrashIcon />
-                <span>Clear All</span>
-              </button>
+                Clear All
+              </Button>
             </div>
           </div>
 
           {/* Filters and Search */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div className="relative">
-              <SearchIcon />
-              <input
+              <Input
                 type="text"
                 placeholder="Search favorites..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))] focus:border-transparent"
+                className="pl-10"
               />
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <SearchIcon />
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[rgb(var(--color-textSecondary))]">
+                <ActionIcons.Search />
               </div>
             </div>
 
             {/* Category Filter */}
-            <select
+            <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))] focus:border-transparent"
-            >
-              {availableCategories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
+              options={availableCategories.map((category) => ({
+                value: category,
+                label: category,
+              }))}
+            />
 
             {/* Source Filter */}
-            <select
+            <Select
               value={selectedSource}
               onChange={(e) => setSelectedSource(e.target.value)}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))] focus:border-transparent"
-            >
-              {availableSources.map(source => (
-                <option key={source} value={source}>{source}</option>
-              ))}
-            </select>
+              options={availableSources.map((source) => ({
+                value: source,
+                label: source,
+              }))}
+            />
 
             {/* Sort */}
-            <select
+            <Select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'source')}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-accent))] focus:border-transparent"
-            >
-              <option value="recent">Most Recent</option>
-              <option value="title">Title A-Z</option>
-              <option value="source">Source A-Z</option>
-            </select>
+              onChange={(e) =>
+                setSortBy(e.target.value as "recent" | "title" | "source")
+              }
+              options={[
+                { value: "recent", label: "Most Recent" },
+                { value: "title", label: "Title A-Z" },
+                { value: "source", label: "Source A-Z" },
+              ]}
+            />
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="flex-1 overflow-y-auto p-6">
           {filteredFavorites.length === 0 ? (
-            <div className="text-center py-12">
-              <HeartIcon />
-              <div className="mx-auto w-16 h-16 text-gray-600 mb-4">
-                <HeartIcon />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-400 mb-2">
-                {favorites.length === 0 ? 'No favorites yet' : 'No matching favorites'}
-              </h3>
-              <p className="text-gray-500">
+            <div className="text-center py-16">
+              <StatusIcons.Success className="w-16 h-16 mx-auto text-gray-600 mb-6 text-red-500" />
+              <h3 className="text-xl font-semibold text-[rgb(var(--color-textSecondary))] mb-3">
                 {favorites.length === 0
-                  ? 'Start favoriting articles to see them here'
-                  : 'Try adjusting your search or filters'
-                }
+                  ? "No favorites yet"
+                  : "No matching favorites"}
+              </h3>
+              <p className="text-[rgb(var(--color-textSecondary))] max-w-md mx-auto">
+                {favorites.length === 0
+                  ? "Start favoriting articles to see them here. Click the heart icon on any article to add it to your favorites."
+                  : "Try adjusting your search terms or filters to find what you're looking for."}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {filteredFavorites.map((favorite) => (
-                <div key={favorite.id} className="border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors">
+                <Card
+                  key={favorite.id}
+                  className="hover:border-gray-600 transition-all duration-200 hover:shadow-lg"
+                  elevation="sm"
+                >
                   <div className="flex items-start space-x-4">
                     <LazyImage
-                      src={favorite.imageUrl || `https://picsum.photos/seed/${favorite.link}/80/80`}
+                      src={
+                        favorite.imageUrl ||
+                        `https://picsum.photos/seed/${favorite.link}/80/80`
+                      }
                       alt={`Thumbnail for ${favorite.title}`}
-                      className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                      className="w-20 h-20 object-cover rounded-lg flex-shrink-0 shadow-sm"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
@@ -305,36 +316,41 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose 
                             href={favorite.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-white font-semibold hover:text-[rgb(var(--color-accent))] transition-colors line-clamp-2"
+                            className="text-white font-semibold hover:text-blue-400 transition-colors line-clamp-2 text-lg leading-tight"
                           >
                             {favorite.title}
                           </a>
-                          <div className="flex items-center space-x-3 mt-2 text-sm text-gray-400">
-                            <span className="font-medium text-[rgb(var(--color-accent))]">
+                          <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
+                            <Badge variant="secondary" className="text-xs">
                               {favorite.author || favorite.sourceTitle}
+                            </Badge>
+                            <span className="text-[rgb(var(--color-textSecondary))]">
+                              {timeSince(favorite.pubDate)}
                             </span>
-                            <span>•</span>
-                            <span>{timeSince(favorite.pubDate)}</span>
-                            <span>•</span>
-                            <span>Favorited {timeSince(favorite.favoritedAt)}</span>
+                            <span className="text-[rgb(var(--color-textSecondary))]">
+                              Favorited {timeSince(favorite.favoritedAt)}
+                            </span>
                           </div>
                           {favorite.description && (
-                            <p className="text-gray-500 text-sm mt-2 line-clamp-2">
+                            <p className="text-[rgb(var(--color-textSecondary))] text-sm mt-3 line-clamp-2 leading-relaxed">
                               {favorite.description}
                             </p>
                           )}
                         </div>
-                        <button
+                        <IconButton
                           onClick={() => handleRemoveFavorite(favorite)}
-                          className="ml-4 p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-colors flex-shrink-0"
+                          variant="ghost"
+                          size="sm"
+                          icon={
+                            <StatusIcons.Success className="text-red-400" />
+                          }
+                          className="ml-4 text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0"
                           title="Remove from favorites"
-                        >
-                          <HeartIcon filled />
-                        </button>
+                        />
                       </div>
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -342,30 +358,40 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose 
 
         {/* Confirm Clear Dialog */}
         {showConfirmClear && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-white mb-4">Clear All Favorites?</h3>
-              <p className="text-gray-400 mb-6">
-                This will permanently remove all {favorites.length} favorites. This action cannot be undone.
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
+            <Card className="max-w-md w-full mx-4" elevation="lg">
+              <div className="flex items-center mb-4">
+                <StatusIcons.Warning className="w-6 h-6 text-yellow-500 mr-3" />
+                <h3 className="text-lg font-semibold text-white">
+                  Clear All Favorites?
+                </h3>
+              </div>
+              <p className="text-[rgb(var(--color-textSecondary))] mb-6 leading-relaxed">
+                This will permanently remove all{" "}
+                <strong>{favorites.length}</strong> favorites. This action
+                cannot be undone.
               </p>
-              <div className="flex space-x-3">
-                <button
+              <div className="flex gap-3">
+                <Button
                   onClick={handleClearAll}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md transition-colors"
+                  variant="danger"
+                  className="flex-1"
+                  icon={<ActionIcons.Delete />}
                 >
                   Clear All
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setShowConfirmClear(false)}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md transition-colors"
+                  variant="secondary"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           </div>
         )}
-      </div>
+      </Card>
     </Modal>
   );
 };
