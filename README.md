@@ -7,9 +7,9 @@ A modern, customizable RSS feed aggregator designed as a browser homepage replac
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)
 ![React](https://img.shields.io/badge/React-19.1.0-blue.svg)
 
-## ✨ Features
+## Features
 
-### 🗞️ RSS Feed Management
+### RSS Feed Management
 
 - **Multi-source aggregation**: Fetch and display articles from multiple RSS feeds
 - **Smart validation**: Automatic feed validation with error recovery
@@ -17,14 +17,14 @@ A modern, customizable RSS feed aggregator designed as a browser homepage replac
 - **Category organization**: Organize feeds into custom categories with drag-and-drop
 - **OPML import/export**: Import and export feed collections
 
-### 🎨 Customization
+### Customization
 
 - **Theme system**: Multiple built-in themes (dark/light) with custom theme creation
 - **Background images**: Customizable background images
 - **Layout options**: Flexible article layout and pagination
 - **Color customization**: Full color palette customization
 
-### 📱 User Experience
+### User Experience
 
 - **Responsive design**: Works on desktop, tablet, and mobile
 - **Offline support**: PWA-ready with service worker
@@ -32,14 +32,14 @@ A modern, customizable RSS feed aggregator designed as a browser homepage replac
 - **Search functionality**: Search across all articles
 - **Favorites system**: Save and organize favorite articles
 
-### 🔧 Technical Features
+### Technical Features
 
 - **Local storage**: All data stored locally in browser
 - **Performance optimized**: Lazy loading, virtualization, and caching
 - **Error handling**: Comprehensive error recovery and user feedback
 - **Accessibility**: WCAG compliant with screen reader support
 
-## � Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -78,7 +78,7 @@ npm run build
 
 The built files will be in the `dist/` directory.
 
-## 📖 Usage
+## Usage
 
 ### Adding RSS Feeds
 
@@ -101,7 +101,7 @@ The built files will be in the `dist/` directory.
 - **Search**: Use the search bar to find specific articles
 - **Filter**: Filter by category, source, or read status
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 
@@ -137,7 +137,7 @@ The built files will be in the `dist/` directory.
 - **Cache System**: Optimizes performance with smart caching
 - **Error Handler**: Provides comprehensive error recovery
 
-## 🧪 Testing
+## Testing
 
 Run the test suite:
 
@@ -151,14 +151,14 @@ Run tests with coverage:
 npm run test:coverage
 ```
 
-## 📚 Documentation
+## Documentation
 
 - [Design Specifications](docs/design/)
 - [Development Guide](docs/development/)
 - [Feature Specifications](docs/specs/)
 - [API Documentation](docs/api/)
 
-## � Conteributing
+## Conteributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -173,24 +173,16 @@ npm run test:coverage
 - Maintain accessibility standards
 - Use semantic commit messages
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - RSS2JSON API for CORS-free RSS parsing
 - Open-Meteo API for weather data
 - Lucide React for beautiful icons
 - Tailwind CSS for utility-first styling
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the [documentation](docs/)
-2. Search existing [issues](https://github.com/mafhper/personal-news-dashboard/issues)
-3. Create a new issue with detailed information
 
 ---
 
