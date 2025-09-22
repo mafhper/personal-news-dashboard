@@ -2,7 +2,7 @@
 
 A modern, customizable RSS feed aggregator designed as a browser homepage replacement. Built with React, TypeScript, and Tailwind CSS.
 
-![Personal News Dashboard](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Personal News Dashboard](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)
 ![React](https://img.shields.io/badge/React-19.1.0-blue.svg)
